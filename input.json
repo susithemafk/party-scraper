@@ -1,0 +1,14 @@
+{
+    "Artbar": [
+        {
+            "date": "2026-02-11",
+            "url": "https://www.smsticket.cz/vstupenky/66140-living-room-deltawelle-de-drying-cactus-artbar-brno",
+            "actions": [
+                { "type": "wait", "duration": 2 },
+                { "type": "click", "selector": "div.poster" },
+                { "type": "wait", "duration": 2 }
+            ]
+        }
+    ],
+    "Melodka": []
+}
