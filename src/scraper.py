@@ -88,7 +88,11 @@ async def process_batch(input_data: dict) -> dict:
 
             for event in events:
                 url = event.get('url')
+                known_date = event.get('date')
                 actions = event.get('actions')
+
+                if not url:
+                    continue
 
                 # Pass the crawler instance and optional actions
                 detail = await process_event(crawler, url, known_date, actions)
