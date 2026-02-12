@@ -1,9 +1,25 @@
 {
     "Artbar": [
         {
-            "date": "2026-02-11",
-            "url": "https://www.smsticket.cz/vstupenky/66140-living-room-deltawelle-de-drying-cactus-artbar-brno",
-            "actions": [{ "type": "click", "selector": "div.poster" }]
+            "date": "2026-02-12",
+            "url": "https://www.artbar.club/events/cze-vs-can",
+            "actions": []
+        },
+        {
+            "date": "2026-02-13",
+            "url": "https://www.artbar.club/events/cze-vs-fra",
+            "actions": []
+        },
+        {
+            "date": "2026-02-13",
+            "url": "https://www.eventlook.cz/udalosti/g-1-nter-brno-artbar-xzrnwo/",
+            "actions": [],
+            "image_selector": "span.wrapper > img"
+        },
+        {
+            "date": "2026-02-14",
+            "url": "https://tootoot.fm/cs/events/69723fa66a0b507c25949d26",
+            "image_selector": "div.main-img"
         }
     ],
     "Melodka": []

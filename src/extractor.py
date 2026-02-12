@@ -16,7 +16,7 @@ client = genai.Client(api_key=API_KEY)
 # Note: google-genai handles configuration slightly differently,
 # using config in generate_content instead of model init for some settings.
 # Assuming user wants latest flash, or stick to what they had
-model_name = "gemini-2.0-flash"
+model_name = "gemini-2.5-flash"
 # The user's snippet suggested gemini-2.5-flash which doesn't exist yet, likely meant 2.0 or 1.5
 
 

@@ -19,6 +19,8 @@ class EventInput(BaseModel):
     url: str
     actions: Optional[List[dict]] = Field(
         None, description="Optional list of crawl4ai actions")
+    image_selector: Optional[str] = Field(
+        None, description="Optional CSS selector for the main event image")
 
 # Input format: Dict[str, List[EventInput]]
 # Example: {"Artbar": [{"date": "...", "url": "..."}]}
