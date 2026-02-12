@@ -7,9 +7,9 @@ class EventDetail(BaseModel):
     date: Optional[str] = Field(
         None, description="Datum akce ve formátu RRRR-MM-DD")
     time: Optional[str] = Field(None, description="Čas začátku akce")
-    place: str = Field(..., description="Název klubu/místa konání")
+    place: Optional[str] = Field(None, description="Název klubu/místa konání")
     price: Optional[str] = Field(None, description="Cena vstupného")
-    description: str = Field(..., description="Stručný popis akce")
+    description: Optional[str] = Field(None, description="Stručný popis akce")
     image_url: Optional[str] = Field(
         None, description="URL hlavního obrázku/plakátu")
 

@@ -47,6 +47,19 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
                 if selector:
                     js_code_blocks.append(
                         f"(() => {{ let el = document.querySelector('{selector}'); if(el) el.click(); }})();")
+            elif a_type == "click_text":
+                text = action.get("text")
+                if text:
+                    # Find and click element containing specific text
+                    js_code_blocks.append(
+                        f"""(() => {{
+                            let elements = Array.from(document.querySelectorAll('*'));
+                            let target = elements.find(el => el.textContent && el.textContent.includes('{text}') && !el.querySelector('*'));
+                            if (!target) {{
+                                target = elements.find(el => el.textContent && el.textContent.includes('{text}'));
+                            }}
+                            if (target) target.click();
+                        }})();""")
             elif a_type == "scroll":
                 direction = action.get("direction", "down")
                 amount = action.get("amount", 1000)

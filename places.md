@@ -39,3 +39,8 @@ https://ra.co/clubs/224489/events
 
 Bobyhall
 https://bobyhall.cz/program-bobyhall/
+
+Jazz bar U kouřícího králíka
+
+
+<!-- https://www.jsmezbrna.cz/events.aspx?ec=5 -->
