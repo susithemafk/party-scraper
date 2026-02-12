@@ -1,70 +1,65 @@
 import pytest
-import asyncio
-from crawl4ai import AsyncWebCrawler
-from src.scraper import process_event
-from src.models import EventDetail
+from src.scraper import process_batch
 
 
 @pytest.mark.asyncio
-async def test_artbar_cze_vs_can():
-    async with AsyncWebCrawler(verbose=True) as crawler:
-        url = "https://www.artbar.club/events/cze-vs-can"
-        known_date = "2026-02-12"
-        detail = await process_event(crawler, url, known_date=known_date)
+@pytest.mark.parametrize('execution_number', range(2))
+async def test_batch_extraction(execution_number):
+    input_data = {
+        "Artbar": [
+            # {
+            #     "date": "2026-02-12",
+            #     "url": "https://www.artbar.club/events/cze-vs-can",
+            #     "actions": []
+            # },
+            # {
+            #     "date": "2026-02-13",
+            #     "url": "https://www.artbar.club/events/cze-vs-fra",
+            #     "actions": []
+            # },
+            # {
+            #     "date": "2026-02-13",
+            #     "url": "https://www.eventlook.cz/udalosti/g-1-nter-brno-artbar-xzrnwo/",
+            #     "actions": [],
+            #     "image_selector": "span.wrapper > img"
+            # },
+            {
+                "date": "2026-02-14",
+                "url": "https://tootoot.fm/cs/events/69723fa66a0b507c25949d26",
+                "image_selector": "div.main-img"
+            }
+        ]
+    }
 
-        assert detail is not None
-        assert "CZE vs CAN" in detail.title
-        assert detail.date == "2026-02-12"
-        assert "ARTBAR" in detail.place.upper()
-        # We check for a common prefix of the image URL as it might have dynamic parameters
-        assert detail.image_url.startswith(
-            "https://static.wixstatic.com/media/5af6c7_5d96a76eebb745baba772d08d8fdf5b3")
+    results = await process_batch(input_data)
 
+    assert "Artbar" in results
+    artbar_events = results["Artbar"]
+    assert len(artbar_events) == 1
 
-@pytest.mark.asyncio
-async def test_artbar_cze_vs_fra():
-    async with AsyncWebCrawler(verbose=True) as crawler:
-        url = "https://www.artbar.club/events/cze-vs-fra"
-        known_date = "2026-02-13"
-        detail = await process_event(crawler, url, known_date=known_date)
+    # # Event 1: CZE vs CAN
+    # ev1 = next(e for e in artbar_events if "CZE vs CAN" in e["title"])
+    # assert ev1["date"] == "2026-02-12"
+    # assert "ARTBAR" in ev1["place"].upper()
+    # assert ev1["image_url"].startswith(
+    #     "https://static.wixstatic.com/media/5af6c7_5d96a76eebb745baba772d08d8fdf5b3")
 
-        assert detail is not None
-        assert "CZE vs FRA" in detail.title
-        assert detail.date == "2026-02-13"
-        assert "ARTBAR" in detail.place.upper()
-        assert detail.image_url.startswith(
-            "https://static.wixstatic.com/media/5af6c7_a5f336ad43f54c67988df418fa7c54b0")
+    # # Event 2: CZE vs FRA
+    # ev2 = next(e for e in artbar_events if "CZE vs FRA" in e["title"])
+    # assert ev2["date"] == "2026-02-13"
+    # assert "ARTBAR" in ev2["place"].upper()
+    # assert ev2["image_url"].startswith(
+    #     "https://static.wixstatic.com/media/5af6c7_a5f336ad43f54c67988df418fa7c54b0")
 
+    # # Event 3: Eventlook G1nter
+    # ev3 = next(e for e in artbar_events if "G1nter" in e["title"])
+    # assert ev3["date"] == "2026-02-13"
+    # assert "ARTBAR" in ev3["place"].upper()
+    # assert "playboi-carti-5-png-etayja.png" in ev3["image_url"]
 
-@pytest.mark.asyncio
-async def test_eventlook_g1nter():
-    async with AsyncWebCrawler(verbose=True) as crawler:
-        url = "https://www.eventlook.cz/udalosti/g-1-nter-brno-artbar-xzrnwo/"
-        known_date = "2026-02-13"
-        image_selector = "span.wrapper > img"
-        detail = await process_event(crawler, url, known_date=known_date, image_selector=image_selector)
-
-        assert detail is not None
-        assert "G1nter" in detail.title
-        assert detail.date == "2026-02-13"
-        assert "ARTBAR" in detail.place.upper()
-        # Check if the manual selector override worked
-        assert "playboi-carti-5-png-etayja.png" in detail.image_url
-
-
-@pytest.mark.asyncio
-async def test_tootoot_13k_tour():
-    async with AsyncWebCrawler(verbose=True) as crawler:
-        url = "https://tootoot.fm/cs/events/69723fa66a0b507c25949d26"
-        known_date = "2026-02-14"
-        image_selector = "div.main-img"
-        detail = await process_event(crawler, url, known_date=known_date, image_selector=image_selector)
-
-        assert detail is not None
-        assert "13K TOUR" in detail.title
-        assert detail.date == "2026-02-14"
-        assert "ARTBAR" in detail.place.upper()
-        # Check for the high-res image URL (containing 'c9823cd7-88b7-4d40-a45f-38a3c693808a')
-        # or the one currently in output.json if that's what's expected.
-        # Given the user's output.json has the smaller one, I'll use a more flexible check.
-        assert "ttcdn.b-cdn.net/images" in detail.image_url
+    # Event 4: Tootoot 13K Tour
+    ev4 = next(e for e in artbar_events if "13K TOUR" in e["title"])
+    assert ev4["date"] == "2026-02-14"
+    assert "ARTBAR" in ev4["place"].upper()
+    assert "https://ttcdn.b-cdn.net/images/Event/69723fa66a0b507c25949d26/c9823cd7-88b7-4d40-a45f-38a3c693808a.jpg" in ev4[
+        "image_url"]

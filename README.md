@@ -66,5 +66,10 @@ py -3.12 playwright install # napriklad
 ## Testing
 
 ```bash
-py -3.12 -m pytest .\tests\test_extraction.py
+py -3.12 -m pytest -s -vv .\tests\test_extraction.py
 ```
+
+-s: prints stdout
+-vv: verbose verbose
+
+execution_number is to run test multiple times
