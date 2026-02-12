@@ -10,10 +10,15 @@ import logging
 class ScrapingConfig:
     """Configuration for scraping a specific URL."""
 
-    def __init__(self, actions: list = None, image_selector: str = None, description_selector: str = None):
+    def __init__(self, actions: list = None, selectors: dict = None):
+        """
+        Args:
+            actions: List of actions to perform before extraction
+            selectors: Dictionary mapping field names to CSS selectors
+                      Supported fields: title, date, time, place, price, description, image_url
+        """
         self.actions = actions or []
-        self.image_selector = image_selector
-        self.description_selector = description_selector
+        self.selectors = selectors or {}
 
 
 def parse_url_config(url: str) -> ScrapingConfig:
@@ -39,7 +44,7 @@ def parse_url_config(url: str) -> ScrapingConfig:
     if domain == 'artbar.club':
         return ScrapingConfig(
             actions=[],
-            image_selector=None
+            selectors={}
         )
 
     # TODO test
@@ -50,33 +55,41 @@ def parse_url_config(url: str) -> ScrapingConfig:
                 {"type": "click_text", "text": "See more"},
                 {"type": "wait", "duration": 1}
             ],
-            image_selector="div[aria-label='Event photo'] img"
+            selectors={
+                "image_url": "div[aria-label='Event photo'] img", 
+            }
         )
 
     # TODO test
     elif domain == "fairplay.events":
         return ScrapingConfig(
             actions=[],
-            image_selector=""
+            selectors={}
         )
 
     elif domain == "goout.net":
         return ScrapingConfig(
             actions=[],
-            image_selector=".image-header-wrapper img.loaded",
-            description_selector="div.markdown"
+            selectors={
+                "description": "div.markdown",
+                "image_url": ".image-header-wrapper img.loaded"
+            }
         )
 
     elif domain == 'eventlook.cz':
         return ScrapingConfig(
             actions=[],
-            image_selector="span.wrapper > img"
+            selectors={
+                "image_url": "span.wrapper > img"
+            }
         )
 
     elif domain == 'tootoot.fm':
         return ScrapingConfig(
             actions=[],
-            image_selector="div.main-img"
+            selectors={
+                "image_url": "div.main-img"
+            }
         )
 
     # Add more domain patterns here as needed

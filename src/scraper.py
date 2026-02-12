@@ -29,8 +29,7 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
     # Parse URL to get appropriate configuration
     scraping_config = parse_url_config(url)
     actions_data = scraping_config.actions
-    image_selector = scraping_config.image_selector
-    description_selector = scraping_config.description_selector
+    selectors = scraping_config.selectors
 
     config = None
     js_code_blocks = []
@@ -71,65 +70,70 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
 
     wait_for = None
     
-    # Extract description if selector is provided
-    if description_selector:
-        extract_description_js = rf"""
-        return (() => {{
-            let el = document.querySelector('{description_selector}');
-            return el ? el.textContent.trim() : null;
-        }})();
-        """
-        js_code_blocks.append(extract_description_js)
+    # Build extraction scripts for each selector
+    # Keep track of field order for result processing
+    extraction_fields = []
     
-    if image_selector:
-        # Only wait for image selector if there are no actions
-        # (actions handle their own timing with clicks/waits)
-        if not actions_data:
-            wait_for = f"css:{image_selector}"
-        # Small grace period after the element appears to allow for high-res image swaps
-        js_code_blocks.append("await new Promise(r => setTimeout(r, 2000));")
+    for field_name, selector in selectors.items():
+        if not selector:
+            continue
+            
+        extraction_fields.append(field_name)
+        
+        if field_name == "image_url":
+            # Only wait for image selector if there are no actions
+            if not actions_data:
+                wait_for = f"css:{selector}"
+            # Small grace period for high-res image swaps
+            js_code_blocks.append("await new Promise(r => setTimeout(r, 2000));")
+            
+            # Script to extract the best image URL from all matching elements
+            extract_image_js = rf"""
+            return (() => {{
+                let elements = document.querySelectorAll('{selector}');
+                let candidates = [];
 
-        # Script to extract the best image URL from all matching elements
-        extract_image_js = rf"""
-        return (() => {{
-            let elements = document.querySelectorAll('{image_selector}');
-            let candidates = [];
-
-            for (let el of elements) {{
-                let url = null;
-                if (el.tagName === 'IMG') {{
-                    url = el.src || el.getAttribute('data-src');
-                }} else {{
-                    let style = window.getComputedStyle(el);
-                    let bg = style.backgroundImage;
-                    if (bg && bg !== 'none') {{
-                        let match = bg.match(/url\(["']?(.*?)["']?\)/);
-                        if (match) url = match[1];
+                for (let el of elements) {{
+                    let url = null;
+                    if (el.tagName === 'IMG') {{
+                        url = el.src || el.getAttribute('data-src');
+                    }} else {{
+                        let style = window.getComputedStyle(el);
+                        let bg = style.backgroundImage;
+                        if (bg && bg !== 'none') {{
+                            let match = bg.match(/url\(["']?(.*?)["']?\)/);
+                            if (match) url = match[1];
+                        }}
+                        if (!url) url = el.getAttribute('data-src') || el.getAttribute('data-original');
                     }}
-                    if (!url) url = el.getAttribute('data-src') || el.getAttribute('data-original');
+
+                    if (url) {{
+                        url = url.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+                        try {{
+                            candidates.push(new URL(url, document.baseURI).href);
+                        }} catch(e) {{}}
+                    }}
                 }}
 
-                if (url) {{
-                    // Clean up common HTML entities if they somehow leaked into computed style
-                    url = url.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
-                    try {{
-                        candidates.push(new URL(url, document.baseURI).href);
-                    }} catch(e) {{}}
-                }}
-            }}
+                if (candidates.length === 0) return null;
 
-            if (candidates.length === 0) return null;
+                // Heuristic: pick the URL that looks most like a large event image
+                let best = candidates.find(u => u.includes('1200') || u.includes('large') || u.includes('/Event/'));
+                if (best) return best;
 
-            // Heuristic: pick the URL that looks most like a large event image
-            // 1. Prefer URLs with "1200", "large", or "/Event/"
-            let best = candidates.find(u => u.includes('1200') || u.includes('large') || u.includes('/Event/'));
-            if (best) return best;
-
-            // 2. Otherwise pick the longest URL (often has more parameters/higher quality)
-            return candidates.sort((a, b) => b.length - a.length)[0];
-        }})()
-        """
-        js_code_blocks.append(extract_image_js)
+                return candidates.sort((a, b) => b.length - a.length)[0];
+            }})();
+            """
+            js_code_blocks.append(extract_image_js)
+        else:
+            # For other fields, extract text content
+            extract_text_js = rf"""
+            return (() => {{
+                let el = document.querySelector('{selector}');
+                return el ? el.textContent.trim() : null;
+            }})();
+            """
+            js_code_blocks.append(extract_text_js)
 
     config = CrawlerRunConfig(
         js_code=js_code_blocks if js_code_blocks else None,
@@ -151,27 +155,18 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
     if result.js_execution_result:
         logging.info(f"JS execution result: {result.js_execution_result}")
 
-    if event_detail and result.js_execution_result:
+    if event_detail and result.js_execution_result and extraction_fields:
         results_list = result.js_execution_result.get("results", [])
         if results_list and len(results_list) > 0:
             # Filter to only get string results (ignore action results like {'success': True})
             string_results = [r for r in results_list if isinstance(r, str)]
-            result_index = 0
             
-            # Extract description if we have a description selector
-            if description_selector and result_index < len(string_results):
-                description_result = string_results[result_index]
-                if description_result:
-                    logging.info(f"Overriding description with manual extraction: {description_result[:100]}...")
-                    event_detail.description = description_result
-                result_index += 1
-            
-            # Extract image URL if we have an image selector
-            if image_selector and result_index < len(string_results):
-                image_url_result = string_results[result_index]
-                if image_url_result:
-                    logging.info(f"Overriding image URL with manual extraction: {image_url_result}")
-                    event_detail.image_url = image_url_result
+            # Map extracted results to event detail fields in order
+            for idx, field_name in enumerate(extraction_fields):
+                if idx < len(string_results) and string_results[idx]:
+                    extracted_value = string_results[idx]
+                    logging.info(f"Overriding {field_name} with manual extraction: {extracted_value[:100] if len(extracted_value) > 100 else extracted_value}...")
+                    setattr(event_detail, field_name, extracted_value)
 
     if event_detail:
         logging.info(f"Successfully extracted: {event_detail.title}")
