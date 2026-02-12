@@ -30,6 +30,7 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
     scraping_config = parse_url_config(url)
     actions_data = scraping_config.actions
     image_selector = scraping_config.image_selector
+    description_selector = scraping_config.description_selector
 
     config = None
     js_code_blocks = []
@@ -69,8 +70,22 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
                     js_code_blocks.append(f"window.scrollBy(0, -{amount});")
 
     wait_for = None
+    
+    # Extract description if selector is provided
+    if description_selector:
+        extract_description_js = rf"""
+        return (() => {{
+            let el = document.querySelector('{description_selector}');
+            return el ? el.textContent.trim() : null;
+        }})();
+        """
+        js_code_blocks.append(extract_description_js)
+    
     if image_selector:
-        wait_for = f"css:{image_selector}"
+        # Only wait for image selector if there are no actions
+        # (actions handle their own timing with clicks/waits)
+        if not actions_data:
+            wait_for = f"css:{image_selector}"
         # Small grace period after the element appears to allow for high-res image swaps
         js_code_blocks.append("await new Promise(r => setTimeout(r, 2000));")
 
@@ -132,19 +147,31 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
         f"Extracted content length: {len(result.markdown)} chars. Sending to Gemini...")
     event_detail = extract_event_detail(result.markdown)
 
-    # Process manual image extraction result
+    # Process manual extraction results
     if result.js_execution_result:
         logging.info(f"JS execution result: {result.js_execution_result}")
 
-    if event_detail and result.js_execution_result and image_selector:
+    if event_detail and result.js_execution_result:
         results_list = result.js_execution_result.get("results", [])
         if results_list and len(results_list) > 0:
-            # The last result is from our image extraction script (appended last)
-            image_url_result = results_list[-1]
-            if image_url_result and isinstance(image_url_result, str):
-                logging.info(
-                    f"Overriding image URL with manual extraction: {image_url_result}")
-                event_detail.image_url = image_url_result
+            # Filter to only get string results (ignore action results like {'success': True})
+            string_results = [r for r in results_list if isinstance(r, str)]
+            result_index = 0
+            
+            # Extract description if we have a description selector
+            if description_selector and result_index < len(string_results):
+                description_result = string_results[result_index]
+                if description_result:
+                    logging.info(f"Overriding description with manual extraction: {description_result[:100]}...")
+                    event_detail.description = description_result
+                result_index += 1
+            
+            # Extract image URL if we have an image selector
+            if image_selector and result_index < len(string_results):
+                image_url_result = string_results[result_index]
+                if image_url_result:
+                    logging.info(f"Overriding image URL with manual extraction: {image_url_result}")
+                    event_detail.image_url = image_url_result
 
     if event_detail:
         logging.info(f"Successfully extracted: {event_detail.title}")

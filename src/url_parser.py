@@ -10,9 +10,10 @@ import logging
 class ScrapingConfig:
     """Configuration for scraping a specific URL."""
 
-    def __init__(self, actions: list = None, image_selector: str = None):
+    def __init__(self, actions: list = None, image_selector: str = None, description_selector: str = None):
         self.actions = actions or []
         self.image_selector = image_selector
+        self.description_selector = description_selector
 
 
 def parse_url_config(url: str) -> ScrapingConfig:
@@ -61,11 +62,9 @@ def parse_url_config(url: str) -> ScrapingConfig:
 
     elif domain == "goout.net":
         return ScrapingConfig(
-            actions=[
-                {"type": "click", "selector": ".image-header-wrapper > span:first-child .image-wrapper > img.loaded"},
-                {"type": "wait", "duration": 2},
-            ],
-            image_selector="#lg-item-1-5 > picture > img"
+            actions=[],
+            image_selector=".image-header-wrapper img.loaded",
+            description_selector="div.markdown"
         )
 
     elif domain == 'eventlook.cz':
