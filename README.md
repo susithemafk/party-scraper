@@ -9,7 +9,8 @@ A Python based tool to scrape party event details from URLs and extract structur
 ```bash
 py -3.12 -m venv venv
 .\venv\Scripts\activate
-py -3.12 -m pip install -r ./requirements.txt
+where.exe python
+pip install -r ./requirements.txt
 ```
 
 _Note: You may need to run `playwright install` or similar if Crawl4AI requires it, depending on your system._
@@ -54,13 +55,6 @@ To deactivate it:
 
 ```bash
 deactivate
-```
-
-and then run every Python script starting with:
-
-```bash
-py -3.12
-py -3.12 playwright install # napriklad
 ```
 
 ## Testing
