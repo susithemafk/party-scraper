@@ -29,7 +29,7 @@ GEMINI_API_KEY=your_actual_api_key
 
 ```json
 {
-    "VenueName": [{ "date": "2026-01-01", "url": "https://..." }]
+  "VenueName": [{ "date": "2026-01-01", "url": "https://..." }]
 }
 ```
 
@@ -60,7 +60,8 @@ deactivate
 ## Testing
 
 ```bash
-py -3.12 -m pytest -s -vv .\tests\test_extraction.py
+pytest -s -vv tests/
+pytest -s -vv tests/test_extraction.py
 ```
 
 -s: prints stdout
