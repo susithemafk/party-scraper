@@ -62,3 +62,9 @@ and then run every Python script starting with:
 py -3.12
 py -3.12 playwright install # napriklad
 ```
+
+## Testing
+
+```bash
+py -3.12 -m pytest .\tests\test_extraction.py
+```
