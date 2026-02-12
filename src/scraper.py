@@ -1,5 +1,6 @@
 from .models import EventDetail
 from .extractor import extract_event_detail
+from .url_parser import parse_url_config
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode
 import asyncio
 import logging
@@ -18,11 +19,17 @@ logging.info("Imported extractor")
 logging.info("Imported models")
 
 
-async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = None, actions_data: list = None, image_selector: str = None) -> EventDetail:
+async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = None) -> EventDetail:
     """
     Crawls a single URL using the provided crawler instance and extracts details.
+    Auto-detects required actions and selectors based on URL.
     """
     logging.info(f"Crawling URL: {url}")
+
+    # Parse URL to get appropriate configuration
+    scraping_config = parse_url_config(url)
+    actions_data = scraping_config.actions
+    image_selector = scraping_config.image_selector
 
     config = None
     js_code_blocks = []
@@ -153,14 +160,12 @@ async def process_batch(input_data: dict) -> dict:
             for event in events:
                 url = event.get('url')
                 known_date = event.get('date')
-                actions = event.get('actions')
-                image_selector = event.get('image_selector')
 
                 if not url:
                     continue
 
-                # Pass the crawler instance and optional actions/selector
-                detail = await process_event(crawler, url, known_date, actions, image_selector)
+                # URL parser will automatically determine actions and selectors
+                detail = await process_event(crawler, url, known_date)
 
                 if detail:
                     # Enforce venue consistency if missing

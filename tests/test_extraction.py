@@ -9,24 +9,19 @@ async def test_batch_extraction(execution_number):
         "Artbar": [
             {
                 "date": "2026-02-12",
-                "url": "https://www.artbar.club/events/cze-vs-can",
-                "actions": []
+                "url": "https://www.artbar.club/events/cze-vs-can"
             },
             {
                 "date": "2026-02-13",
-                "url": "https://www.artbar.club/events/cze-vs-fra",
-                "actions": []
+                "url": "https://www.artbar.club/events/cze-vs-fra"
             },
             {
                 "date": "2026-02-13",
-                "url": "https://www.eventlook.cz/udalosti/g-1-nter-brno-artbar-xzrnwo/",
-                "actions": [],
-                "image_selector": "span.wrapper > img"
+                "url": "https://www.eventlook.cz/udalosti/g-1-nter-brno-artbar-xzrnwo/"
             },
             {
                 "date": "2026-02-14",
-                "url": "https://tootoot.fm/cs/events/69723fa66a0b507c25949d26",
-                "image_selector": "div.main-img"
+                "url": "https://tootoot.fm/cs/events/69723fa66a0b507c25949d26"
             }
         ]
     }
