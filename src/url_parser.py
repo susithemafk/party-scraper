@@ -2,15 +2,26 @@
 URL Parser - Maps URLs to their required scraping configuration.
 This module determines the appropriate actions and selectors based on URL patterns.
 """
-from typing import Optional
+from typing import Optional, TypedDict
 from urllib.parse import urlparse
 import logging
+
+
+class EventSelectors(TypedDict, total=False):
+    """Type-safe selectors for event detail fields."""
+    title: str
+    date: str
+    time: str
+    place: str
+    price: str
+    description: str
+    image_url: str
 
 
 class ScrapingConfig:
     """Configuration for scraping a specific URL."""
 
-    def __init__(self, actions: list = None, selectors: dict = None):
+    def __init__(self, actions: list = None, selectors: EventSelectors = None):
         """
         Args:
             actions: List of actions to perform before extraction
@@ -80,7 +91,7 @@ def parse_url_config(url: str) -> ScrapingConfig:
         return ScrapingConfig(
             actions=[],
             selectors={
-                "image_url": "span.wrapper > img"
+                "image_url": "span.wrapper > img", 
             }
         )
 
