@@ -31,7 +31,7 @@ def extract_event_detail(content: str) -> EventDetail:
 
     {{
         "title": "Name of the event",
-        "date": "YYYY-MM-DD",
+        "date": "Date of the event in RRRR-MM-DD format. 'sobota 14. února' will be '2026-02-14'",
         "time": "HH:MM",
         "place": "Venue name",
         "price": "Price info (optional)",
@@ -39,10 +39,12 @@ def extract_event_detail(content: str) -> EventDetail:
         "image_url": "Main image URL (optional)"
     }}
 
+    CRITICAL: Output date format '2026-02-14' if text is 'sobota 14. února'
+
     If any field is missing, try to infer it from context or use null/empty string appropriately for required fields.
 
     Content:
-    {content[:10000]}  # Truncate to avoid context window issues if very large, though flash handles more.
+    {content[:10000]}
     """
 
     response = client.models.generate_content(

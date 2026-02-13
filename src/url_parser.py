@@ -156,6 +156,19 @@ def parse_url_config(url: str) -> ScrapingConfig:
             }
         )
 
+    elif domain == 'smsticket.cz':
+        return ScrapingConfig(
+            actions=[
+                {"type": "wait", "duration": 2},
+                {"type": "click", "selector": "div.poster > img"},
+                {"type": "wait", "duration": 2},
+            ],
+            selectors={
+                "image_url": "div.featherlight-content > img",
+                "date": ".date-place"
+            }
+        )
+
     # Add more domain patterns here as needed
     # Example with actions:
     # elif domain == 'example.com':
