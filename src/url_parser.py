@@ -111,6 +111,23 @@ def parse_url_config(url: str) -> ScrapingConfig:
             }
         )
 
+    # TODO test
+    # elif domain == 'ticketmaster.cz':
+    #     return ScrapingConfig(
+    #         actions=[],
+    #         selectors={
+    #             # "image_url": "div.detail-header > img"
+    #         }
+    #     )
+
+    elif domain == 'sono.cz':
+        return ScrapingConfig(
+            actions=[],
+            selectors={
+                "image_url": "div.featured-image > img"
+            }
+        )
+
     # Add more domain patterns here as needed
     # Example with actions:
     # elif domain == 'example.com':
