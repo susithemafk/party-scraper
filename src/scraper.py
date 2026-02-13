@@ -4,6 +4,7 @@ from .url_parser import parse_url_config
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode
 import asyncio
 import logging
+import json
 
 logging.basicConfig(
     filename='scraper_debug.log',
@@ -69,28 +70,29 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
                     js_code_blocks.append(f"window.scrollBy(0, -{amount});")
 
     wait_for = None
-    
+
     # Build extraction scripts for each selector
     # Keep track of field order for result processing
     extraction_fields = []
-    
+
     for field_name, selector in selectors.items():
         if not selector:
             continue
-            
+
         extraction_fields.append(field_name)
-        
+
         if field_name == "image_url":
             # Only wait for image selector if there are no actions
             if not actions_data:
                 wait_for = f"css:{selector}"
             # Small grace period for high-res image swaps
-            js_code_blocks.append("await new Promise(r => setTimeout(r, 2000));")
-            
+            js_code_blocks.append(
+                "await new Promise(r => setTimeout(r, 2000));")
+
             # Script to extract the best image URL from all matching elements
             extract_image_js = rf"""
             return (() => {{
-                let elements = document.querySelectorAll('{selector}');
+                let elements = document.querySelectorAll({json.dumps(selector)});
                 let candidates = [];
 
                 for (let el of elements) {{
@@ -129,7 +131,7 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
             # For other fields, extract text content
             extract_text_js = rf"""
             return (() => {{
-                let el = document.querySelector('{selector}');
+                let el = document.querySelector({json.dumps(selector)});
                 return el ? el.textContent.trim() : null;
             }})();
             """
@@ -138,7 +140,9 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
     config = CrawlerRunConfig(
         js_code=js_code_blocks if js_code_blocks else None,
         wait_for=wait_for,
-        cache_mode=CacheMode.BYPASS
+        cache_mode=CacheMode.BYPASS,
+        session_id="session_1",
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     )
 
     result = await crawler.arun(url=url, config=config)
@@ -160,12 +164,13 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
         if results_list and len(results_list) > 0:
             # Filter to only get string results (ignore action results like {'success': True})
             string_results = [r for r in results_list if isinstance(r, str)]
-            
+
             # Map extracted results to event detail fields in order
             for idx, field_name in enumerate(extraction_fields):
                 if idx < len(string_results) and string_results[idx]:
                     extracted_value = string_results[idx]
-                    logging.info(f"Overriding {field_name} with manual extraction: {extracted_value[:100] if len(extracted_value) > 100 else extracted_value}...")
+                    logging.info(
+                        f"Overriding {field_name} with manual extraction: {extracted_value[:100] if len(extracted_value) > 100 else extracted_value}...")
                     setattr(event_detail, field_name, extracted_value)
 
     if event_detail:

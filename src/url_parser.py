@@ -169,6 +169,15 @@ def parse_url_config(url: str) -> ScrapingConfig:
             }
         )
 
+    # fraktal
+    elif domain == 'ra.co':
+        return ScrapingConfig(
+            actions=[],
+            selectors={
+                "image_url": "section[data-tracking-id='event-detail-description'] ul li img",
+            }
+        )
+
     # Add more domain patterns here as needed
     # Example with actions:
     # elif domain == 'example.com':

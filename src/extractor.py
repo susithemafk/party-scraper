@@ -40,6 +40,7 @@ def extract_event_detail(content: str) -> EventDetail:
     }}
 
     CRITICAL: Output date format '2026-02-14' if text is 'sobota 14. února'
+    CRITICAL: Use original langugage.
 
     If any field is missing, try to infer it from context or use null/empty string appropriately for required fields.
 
