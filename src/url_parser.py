@@ -67,7 +67,7 @@ def parse_url_config(url: str) -> ScrapingConfig:
                 {"type": "wait", "duration": 1}
             ],
             selectors={
-                "image_url": "div[aria-label='Event photo'] img", 
+                "image_url": "div[aria-label='Event photo'] img",
             }
         )
 
@@ -91,7 +91,7 @@ def parse_url_config(url: str) -> ScrapingConfig:
         return ScrapingConfig(
             actions=[],
             selectors={
-                "image_url": "span.wrapper > img", 
+                "image_url": "span.wrapper > img",
             }
         )
 
@@ -100,6 +100,14 @@ def parse_url_config(url: str) -> ScrapingConfig:
             actions=[],
             selectors={
                 "image_url": "div.main-img"
+            }
+        )
+
+    elif domain == 'ticketportal.cz':
+        return ScrapingConfig(
+            actions=[],
+            selectors={
+                "image_url": "div.detail-header > img"
             }
         )
 
