@@ -136,6 +136,18 @@ def parse_url_config(url: str) -> ScrapingConfig:
             }
         )
 
+    elif domain == 'fleda.cz':
+        return ScrapingConfig(
+            actions=[
+                {"type": "wait", "duration": 2},
+                {"type": "click", "selector": "div.program-detail > div.clearfix > div.img > div > a > img"},
+                {"type": "wait", "duration": 2},
+            ],
+            selectors={
+                "image_url": "img.fancybox-image"
+            }
+        )
+
     # Add more domain patterns here as needed
     # Example with actions:
     # elif domain == 'example.com':
