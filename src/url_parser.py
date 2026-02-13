@@ -136,6 +136,14 @@ def parse_url_config(url: str) -> ScrapingConfig:
             }
         )
 
+    elif domain == 'perpetuumklub.cz':
+        return ScrapingConfig(
+            actions=[],
+            selectors={
+                "image_url": "div.event_image > img"
+            }
+        )
+
     elif domain == 'fleda.cz':
         return ScrapingConfig(
             actions=[
