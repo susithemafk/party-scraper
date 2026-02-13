@@ -128,6 +128,14 @@ def parse_url_config(url: str) -> ScrapingConfig:
             }
         )
 
+    elif domain == 'kabinetmuz.cz':
+        return ScrapingConfig(
+            actions=[],
+            selectors={
+                "image_url": "div.detail__img"
+            }
+        )
+
     # Add more domain patterns here as needed
     # Example with actions:
     # elif domain == 'example.com':
