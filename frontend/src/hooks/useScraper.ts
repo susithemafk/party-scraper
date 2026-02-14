@@ -28,6 +28,22 @@ export const useScraper = (parserFunc: ParserFunc, initialUrl: string = "") => {
             processed = processed.filter(item => item.date === today)
         }
 
+        // Deduplicate by URL
+        const seenUrls = new Set<string>()
+        processed = processed.filter(item => {
+            if (!item.url) return true // Keep items without URL
+            if (seenUrls.has(item.url)) return false
+            seenUrls.add(item.url)
+            return true
+        })
+
+        // Sort by date always
+        processed.sort((a, b) => {
+            if (!a.date) return 1
+            if (!b.date) return -1
+            return a.date.localeCompare(b.date)
+        })
+
         if (maxResults > 0) {
             processed = processed.slice(0, maxResults)
         }
