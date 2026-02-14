@@ -53,6 +53,25 @@ p.subtitle {
     margin-bottom: 2rem;
 }
 
+.scraper-section {
+    background: rgba(15, 23, 42, 0.3);
+    padding: 2rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    text-align: left;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    color: #f8fafc;
+    border-bottom: 2px solid var(--primary);
+    display: inline-block;
+    padding-bottom: 0.2rem;
+}
+
 .input-section {
     display: flex;
     flex-direction: column;
