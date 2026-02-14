@@ -36,6 +36,11 @@ pnpm dev
 
 ---
 
+### How to run
+on Frontend you can generate input.json to the root folder of the project.
+Then when you activate virtual environment and run main.py it will read the input.json and generate output.json with the results.
+`python main.py`
+
 ## 🛠️ Prerequisites
 
 - **Node.js & pnpm**
