@@ -111,6 +111,8 @@ def parse_url_config(url: str) -> ScrapingConfig:
             }
         )
 
+    # TODO add alterna ale obrazky vpici https://www.alterna.cz/program/hello-marcel-cringe-prince/
+
     # TODO test
     # elif domain == 'ticketmaster.cz':
     #     return ScrapingConfig(
@@ -177,6 +179,8 @@ def parse_url_config(url: str) -> ScrapingConfig:
                 "image_url": "section[data-tracking-id='event-detail-description'] ul li img",
             }
         )
+
+    # patrobrno NE, lepší smsticket
 
     # Add more domain patterns here as needed
     # Example with actions:
