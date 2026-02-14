@@ -1,16 +1,24 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import "./App.css"
 import { ScraperSection } from "./components/ScraperSection"
 import { AiProcessor } from "./components/AiProcessor"
 import { artbarParser } from "./parsers/artbar"
+import { ScrapedItem } from "./types"
 
-function App() {
-    const [scrapedItems, setScrapedItems] = useState([])
+const App: React.FC = () => {
+    const [scrapedItems, setScrapedItems] = useState<ScrapedItem[]>([])
 
-    const handleScrapedData = (newData) => {
+    const handleScrapedData = (newData: ScrapedItem[]) => {
         setScrapedItems((prev) => {
             const combined = [...prev, ...newData]
-            return combined
+            // Simple uniqueness filter
+            const seen = new Set()
+            return combined.filter(item => {
+                const key = `${item.url}-${item.date}`
+                if (seen.has(key)) return false
+                seen.add(key)
+                return true
+            })
         })
     }
 

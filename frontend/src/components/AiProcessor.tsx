@@ -1,11 +1,16 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import axios from "axios"
+import { ScrapedItem, ProcessedResult } from "../types"
 
-export const AiProcessor = ({ inputData = [] }) => {
-    const [results, setResults] = useState([])
-    const [loading, setLoading] = useState(false)
-    const [progress, setProgress] = useState({ current: 0, total: 0 })
-    const [copied, setCopied] = useState(false)
+interface AiProcessorProps {
+    inputData?: ScrapedItem[];
+}
+
+export const AiProcessor: React.FC<AiProcessorProps> = ({ inputData = [] }) => {
+    const [results, setResults] = useState<ProcessedResult[]>([])
+    const [loading, setLoading] = useState<boolean>(false)
+    const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
+    const [copied, setCopied] = useState<boolean>(false)
 
     const handleProcessAi = async () => {
         if (!inputData || inputData.length === 0) return
@@ -14,7 +19,7 @@ export const AiProcessor = ({ inputData = [] }) => {
         setResults([])
         setProgress({ current: 0, total: inputData.length })
 
-        const processedResults = []
+        const processedResults: ProcessedResult[] = []
 
         for (let i = 0; i < inputData.length; i++) {
             const item = inputData[i]
@@ -27,7 +32,7 @@ export const AiProcessor = ({ inputData = [] }) => {
                 })
                 processedResults.push(response.data)
                 setResults([...processedResults])
-            } catch (err) {
+            } catch (err: any) {
                 console.error(`Failed to process ${item.url}:`, err)
                 processedResults.push({ url: item.url, error: "Failed to extract" })
                 setResults([...processedResults])

@@ -1,10 +1,19 @@
+import React from "react"
 import { useScraper } from "../hooks/useScraper"
+import { ParserFunc, ScrapedItem } from "../types"
 
-export const ScraperSection = ({ title, defaultUrl, parserFunc, onResult }) => {
-    const { url, setUrl, htmlInput, setHtmlInput, result, loading, copied, handleFetchAndParse, handleManualParse, handleCopy } = useScraper(
+interface ScraperSectionProps {
+    title: string;
+    defaultUrl: string;
+    parserFunc: ParserFunc;
+    onResult?: (data: ScrapedItem[]) => void;
+}
+
+export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUrl, parserFunc, onResult }) => {
+    const { url, setUrl, result, loading, copied, handleFetchAndParse, handleCopy } = useScraper(
         parserFunc,
         defaultUrl,
-        onResult,
+        onResult || null,
     )
 
     return (
