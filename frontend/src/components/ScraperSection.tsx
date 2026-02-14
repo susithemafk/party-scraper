@@ -3,18 +3,13 @@ import { useScraper } from "../hooks/useScraper"
 import { ParserFunc, ScrapedItem } from "../types"
 
 interface ScraperSectionProps {
-    title: string;
-    defaultUrl: string;
-    parserFunc: ParserFunc;
-    onResult?: (data: ScrapedItem[]) => void;
+    title: string
+    defaultUrl: string
+    parserFunc: ParserFunc
 }
 
-export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUrl, parserFunc, onResult }) => {
-    const { url, setUrl, result, loading, copied, handleFetchAndParse, handleCopy } = useScraper(
-        parserFunc,
-        defaultUrl,
-        onResult || null,
-    )
+export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUrl, parserFunc }) => {
+    const { url, setUrl, result, loading, copied, handleFetchAndParse, handleCopy } = useScraper(parserFunc, defaultUrl)
 
     return (
         <div className="scraper-section">
@@ -36,7 +31,7 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUr
             {result && (
                 <div className="results-section">
                     <div className="field-label result">
-                        RESULT ARRAY:
+                        RESULT ARRAY: {result.length}
                         <button className="copy-btn" onClick={handleCopy} style={{ background: copied ? "var(--success)" : "" }}>
                             {copied ? "Copied!" : "Copy to Clipboard"}
                         </button>

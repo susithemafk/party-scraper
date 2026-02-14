@@ -1,5 +1,6 @@
 import os
 import json
+from typing import Optional
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -15,12 +16,11 @@ client = genai.Client(api_key=API_KEY)
 
 # Note: google-genai handles configuration slightly differently,
 # using config in generate_content instead of model init for some settings.
-# Assuming user wants latest flash, or stick to what they had
-model_name = "gemini-2.5-flash"
-# The user's snippet suggested gemini-2.5-flash which doesn't exist yet, likely meant 2.0 or 1.5
+# Using gemini-2.0-flash as it is high performance and reliable
+model_name = "gemini-2.0-flash"
 
 
-def extract_event_detail(content: str) -> EventDetail:
+def extract_event_detail(content: str) -> Optional[EventDetail]:
     """
     Extracts structured event details from raw HTML/Markdown content using Gemini.
     """
@@ -48,20 +48,24 @@ def extract_event_detail(content: str) -> EventDetail:
     {content[:10000]}
     """
 
-    response = client.models.generate_content(
-        model=model_name,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.2,
-            top_p=0.95,
-            top_k=64,
-            max_output_tokens=8192,
-            response_mime_type="application/json",
-        )
-    )
-
     try:
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.2,
+                top_p=0.95,
+                top_k=64,
+                max_output_tokens=8192,
+                response_mime_type="application/json",
+            )
+        )
+
         # Check if the response is valid JSON
+        if not response.text:
+            print("Empty response from Gemini API")
+            return None
+
         result = json.loads(response.text)
 
         # If Gemini returns a list, take the first element
@@ -74,8 +78,8 @@ def extract_event_detail(content: str) -> EventDetail:
 
         return EventDetail(**result)
     except json.JSONDecodeError:
-        print(f"Failed to decode JSON from Gemini response: {response.text}")
+        print(f"Failed to decode JSON from Gemini response: {response.text if 'response' in locals() else 'No response'}")
         return None
     except Exception as e:
-        print(f"Error during extraction: {e}")
+        print(f"Error during extraction or API call: {e}")
         return None

@@ -2,7 +2,7 @@ import { useState } from "react"
 import axios from "axios"
 import { ParserFunc, ScrapedItem } from "../types"
 
-export const useScraper = (parserFunc: ParserFunc, initialUrl: string = "", onResult: ((data: ScrapedItem[]) => void) | null = null) => {
+export const useScraper = (parserFunc: ParserFunc, initialUrl: string = "") => {
     const [url, setUrl] = useState<string>(initialUrl)
     const [htmlInput, setHtmlInput] = useState<string>("")
     const [result, setResult] = useState<ScrapedItem[] | null>(null)
@@ -19,7 +19,6 @@ export const useScraper = (parserFunc: ParserFunc, initialUrl: string = "", onRe
             const html = response.data.html
             const data = parserFunc ? parserFunc(html) : []
             setResult(data)
-            if (onResult && data.length > 0) onResult(data)
         } catch (err: any) {
             console.error(err)
             const msg = err.response?.data?.detail || err.message
@@ -33,7 +32,6 @@ export const useScraper = (parserFunc: ParserFunc, initialUrl: string = "", onRe
         if (!htmlInput.trim()) return
         const data = parserFunc ? parserFunc(htmlInput) : []
         setResult(data)
-        if (onResult && data.length > 0) onResult(data)
     }
 
     const handleCopy = () => {

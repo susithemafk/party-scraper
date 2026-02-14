@@ -2,6 +2,7 @@ from .models import EventDetail
 from .extractor import extract_event_detail
 from .url_parser import parse_url_config
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode
+from typing import Optional, List, Dict, Any, cast
 import asyncio
 import logging
 import json
@@ -20,7 +21,7 @@ logging.info("Imported extractor")
 logging.info("Imported models")
 
 
-async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = None) -> EventDetail:
+async def process_event(crawler: AsyncWebCrawler, url: str, known_date: Optional[str] = None) -> Optional[EventDetail]:
     """
     Crawls a single URL using the provided crawler instance and extracts details.
     Auto-detects required actions and selectors based on URL.
@@ -138,14 +139,16 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
             js_code_blocks.append(extract_text_js)
 
     config = CrawlerRunConfig(
-        js_code=js_code_blocks if js_code_blocks else None,
-        wait_for=wait_for,
+        js_code=js_code_blocks if js_code_blocks else [],
+        wait_for=wait_for if wait_for else "",  # Use empty string instead of None to satisfy strict typing
         cache_mode=CacheMode.BYPASS,
         session_id="session_1",
         user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     )
 
-    result = await crawler.arun(url=url, config=config)
+    # We cast to Any here because Pylance sometimes incorrectly identifies the return type
+    # of arun as an AsyncGenerator instead of a CrawlResult in version 0.8.0
+    result: Any = await crawler.arun(url=url, config=config)
 
     if not result.markdown:
         logging.warning(f"No content found for {url}")
@@ -156,10 +159,10 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: str = No
     event_detail = extract_event_detail(result.markdown)
 
     # Process manual extraction results
-    if result.js_execution_result:
+    if hasattr(result, 'js_execution_result') and result.js_execution_result:
         logging.info(f"JS execution result: {result.js_execution_result}")
 
-    if event_detail and result.js_execution_result and extraction_fields:
+    if event_detail and hasattr(result, 'js_execution_result') and result.js_execution_result and extraction_fields:
         results_list = result.js_execution_result.get("results", [])
         if results_list and len(results_list) > 0:
             # Filter to only get string results (ignore action results like {'success': True})

@@ -47,26 +47,20 @@ class ScrapeRequest(BaseModel):
 
 @app.post("/scrape")
 async def scrape_url(request: ScrapeRequest):
+    print(f"Received scrape request for URL: {request.url}")
     async with AsyncWebCrawler(verbose=True) as crawler:
         try:
-            detail = await process_event(crawler, request.url, request.date)
+            detail = await process_event(crawler, request.url, request.date or "")
             if not detail:
+                print(f"Scraping failed for {request.url}: No detail extracted")
                 raise HTTPException(
                     status_code=404, detail="Failed to extract event data")
+            print(f"Successfully scraped: {detail.title}")
             return detail
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/fetch-html")
-async def fetch_html(request: ScrapeRequest):
-    async with AsyncWebCrawler(verbose=True) as crawler:
-        try:
-            # Bypass cache to get fresh HTML using the correct config pattern
-            config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
-            result = await crawler.arun(url=request.url, config=config)
-            return {"html": result.html}
-        except Exception as e:
+            import traceback
+            print(f"Server Error during scraping: {str(e)}")
+            traceback.print_exc()
             raise HTTPException(status_code=500, detail=str(e))
 
 
