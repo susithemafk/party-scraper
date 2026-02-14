@@ -53,6 +53,40 @@ p.subtitle {
     margin-bottom: 2rem;
 }
 
+.fetch-all-btn {
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.fetch-all-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    filter: brightness(1.1);
+}
+
+.fetch-all-btn:active {
+    transform: translateY(0);
+}
+
+.bulk-controls {
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .scraper-section {
     background: rgba(15, 23, 42, 0.3);
     padding: 2rem;
@@ -106,6 +140,48 @@ input[type="text"] {
     outline: none;
     transition: all 0.3s ease;
     box-sizing: border-box;
+}
+
+.filter-controls {
+    background: rgba(15, 23, 42, 0.4);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filter-controls label {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.filter-controls label:hover {
+    color: var(--text);
+}
+
+.filter-controls input[type="checkbox"] {
+    accent-color: var(--primary);
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.filter-controls input[type="number"] {
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.4rem 0.6rem;
+    width: 70px;
+    font-family: inherit;
 }
 
 textarea {
