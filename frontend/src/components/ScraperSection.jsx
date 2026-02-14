@@ -1,9 +1,10 @@
 import { useScraper } from "../hooks/useScraper"
 
-export const ScraperSection = ({ title, defaultUrl, parserFunc }) => {
+export const ScraperSection = ({ title, defaultUrl, parserFunc, onResult }) => {
     const { url, setUrl, htmlInput, setHtmlInput, result, loading, copied, handleFetchAndParse, handleManualParse, handleCopy } = useScraper(
         parserFunc,
         defaultUrl,
+        onResult,
     )
 
     return (

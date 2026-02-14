@@ -119,6 +119,32 @@ input[type="text"]:focus {
     box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
+.items-preview {
+    text-align: left;
+    background: #0f172a;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    font-family: monospace;
+    border: 1px solid var(--border);
+    margin-bottom: 0.5rem;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.preview-row {
+    padding: 0.2rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.preview-row:last-child {
+    border-bottom: none;
+}
+
+.text-muted {
+    color: var(--text-muted);
+}
+
 .button-group {
     display: flex;
     gap: 1rem;

@@ -1,70 +1,51 @@
-# Party Scraper Publisher
+# 🥂 Party Scraper Hybrid Stack
 
-A Python based tool to scrape party event details from URLs and extract structured data using Google Gemini.
+A powerful event extraction tool combining Node.js for reliable web fetching and Python for advanced AI scraping.
 
-## Setup
+## 🏗️ Architecture
 
-1.  **Install Dependencies**:
+1.  **Node.js Fetcher (Port 3001)**: Uses Puppeteer to load difficult websites and bypass CORS.
+2.  **Python Scraper (Port 8000)**: Uses Crawl4AI and Gemini for intelligent data extraction.
+3.  **React Frontend (Port 5173)**: Premium UI to control both engines.
 
-```bash
-py -3.12 -m venv venv
-.\venv\Scripts\activate
-where.exe python
-pip install -r ./requirements.txt
+## 🚀 How to Run (Three-Terminal Setup)
+
+### 1. Start the HTML Fetcher (Node.js)
+
+```powershell
+# Open Terminal 1
+cd backend-js
+node server.js
 ```
 
-_Note: You may need to run `playwright install` or similar if Crawl4AI requires it, depending on your system._
+### 2. Start the AI Scraper (Python)
 
-2.  **Environment Variables**:
-
-- Rename `.env` (or create one) and add your Gemini API Key:
-
-```
-GEMINI_API_KEY=your_actual_api_key
+```powershell
+# Open Terminal 2
+cd backend
+..\venv\Scripts\python.exe main.py
 ```
 
-1.  **Input Data**:
+### 3. Start the Frontend (React)
 
-- Edit `input.json` to add the venues and URLs you want to scrape.
-
-```json
-{
-  "VenueName": [{ "date": "2026-01-01", "url": "https://..." }]
-}
+```powershell
+# Open Terminal 3
+cd frontend
+pnpm dev
 ```
 
-## Usage
+---
 
-Run the main script:
+## 🛠️ Prerequisites
 
-```bash
-python main.py
-```
+- **Node.js & pnpm**
+- **Python 3.10+** (with `venv` configured)
+- **Playwright Chromium**: `.\venv\Scripts\python.exe -m playwright install chromium`
+- **Puppeteer Chrome**: From `backend-js`, run `npx puppeteer browsers install chrome`
+- **Google Gemini API Key**: In the root `.env` file.
 
-Results will be saved to `output.json`.
+## 📁 Project Structure
 
-## Python usage
-
-To use Python in venv you need to activate it first:
-
-```bash
-.\venv\Scripts\activate
-```
-
-To deactivate it:
-
-```bash
-deactivate
-```
-
-## Testing
-
-```bash
-pytest -s -vv tests/
-pytest -s -vv tests/test_extraction.py
-```
-
--s: prints stdout
--vv: verbose verbose
-
-execution_number is to run test multiple times
+- `/backend-js`: Node.js Puppeteer proxy for raw HTML fetching.
+- `/backend`: Python FastAPI server for AI-managed extraction.
+- `/frontend`: React visualization and logic center.

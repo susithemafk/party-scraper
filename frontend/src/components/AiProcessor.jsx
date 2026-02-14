@@ -1,31 +1,23 @@
 import { useState } from "react"
 import axios from "axios"
 
-export const AiProcessor = () => {
-    const [jsonInput, setJsonInput] = useState("")
+export const AiProcessor = ({ inputData = [] }) => {
     const [results, setResults] = useState([])
     const [loading, setLoading] = useState(false)
     const [progress, setProgress] = useState({ current: 0, total: 0 })
     const [copied, setCopied] = useState(false)
 
     const handleProcessAi = async () => {
-        let items = []
-        try {
-            items = JSON.parse(jsonInput)
-            if (!Array.isArray(items)) throw new Error("Input must be a JSON array")
-        } catch (err) {
-            alert("Invalid JSON input. Please paste an array of objects like [{url, date}, ...]")
-            return
-        }
+        if (!inputData || inputData.length === 0) return
 
         setLoading(true)
         setResults([])
-        setProgress({ current: 0, total: items.length })
+        setProgress({ current: 0, total: inputData.length })
 
         const processedResults = []
 
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i]
+        for (let i = 0; i < inputData.length; i++) {
+            const item = inputData[i]
             setProgress((p) => ({ ...p, current: i + 1 }))
 
             try {
@@ -34,7 +26,6 @@ export const AiProcessor = () => {
                     date: item.date,
                 })
                 processedResults.push(response.data)
-                // Use functional update to show results appearing one by one
                 setResults([...processedResults])
             } catch (err) {
                 console.error(`Failed to process ${item.url}:`, err)
@@ -57,21 +48,27 @@ export const AiProcessor = () => {
         <div className="scraper-section ai-processor">
             <h2 className="section-title">AI Data Processor</h2>
             <p className="description" style={{ color: "var(--text-muted)", marginBottom: "1rem" }}>
-                Paste a JSON array of event objects (e.g. from the output of the Fetchers above) to extract detailed information using Gemini AI.
+                This section automatically collects events found by the fetchers above and uses Gemini AI to extract full details.
             </p>
 
             <div className="input-group">
-                <div className="field-label">INPUT JSON ARRAY:</div>
-                <textarea
-                    placeholder='[{"url": "...", "date": "..."}, ...]'
-                    value={jsonInput}
-                    onChange={(e) => setJsonInput(e.target.value)}
-                    style={{ height: "150px", fontFamily: "monospace", fontSize: "12px" }}
-                />
+                <div className="field-label">
+                    READY TO PROCESS: <span style={{ color: "#c084fc" }}>{inputData.length} items</span>
+                </div>
+
+                {inputData.length > 0 && (
+                    <div className="items-preview">
+                        {inputData.map((item, idx) => (
+                            <div key={idx} className="preview-row">
+                                {item.date} - {item.url}
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 <button
                     onClick={handleProcessAi}
-                    disabled={loading || !jsonInput.trim()}
+                    disabled={loading || inputData.length === 0}
                     style={{ background: "linear-gradient(135deg, #c084fc 0%, #a855f7 100%)", marginTop: "1rem" }}
                 >
                     {loading ? (

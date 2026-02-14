@@ -1,7 +1,7 @@
 import { useState } from "react"
 import axios from "axios"
 
-export const useScraper = (parserFunc, initialUrl = "") => {
+export const useScraper = (parserFunc, initialUrl = "", onResult = null) => {
     const [url, setUrl] = useState(initialUrl)
     const [htmlInput, setHtmlInput] = useState("")
     const [result, setResult] = useState(null)
@@ -18,6 +18,7 @@ export const useScraper = (parserFunc, initialUrl = "") => {
             const html = response.data.html
             const data = parserFunc ? parserFunc(html) : null
             setResult(data)
+            if (onResult && data) onResult(data)
         } catch (err) {
             console.error(err)
             const msg = err.response?.data?.detail || err.message
@@ -31,6 +32,7 @@ export const useScraper = (parserFunc, initialUrl = "") => {
         if (!htmlInput.trim()) return
         const data = parserFunc ? parserFunc(htmlInput) : null
         setResult(data)
+        if (onResult && data) onResult(data)
     }
 
     const handleCopy = () => {
