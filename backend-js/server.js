@@ -1,12 +1,14 @@
 const express = require("express")
 const puppeteer = require("puppeteer")
 const cors = require("cors")
+const fs = require("fs")
+const path = require("path")
 
 const app = express()
 const port = 3001 // Using 3001 to avoid conflict with Python backend
 
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: "50mb" }))
 
 // --- Pure HTML Fetcher Endpoint ---
 app.post("/fetch-html", async (req, res) => {
@@ -38,6 +40,21 @@ app.post("/fetch-html", async (req, res) => {
         if (browser) await browser.close()
         console.error(`[Fetcher] Error: ${error.message}`)
         res.status(500).json({ error: error.message })
+    }
+})
+
+app.post("/save-json", (req, res) => {
+    const data = req.body
+    // Target input.json in the project root (one level up from backend-js)
+    const filePath = path.join(__dirname, "..", "input.json")
+
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 4), "utf-8")
+        console.log(`[Server] JSON saved to: ${filePath}`)
+        res.json({ message: "File successfully saved in project root" })
+    } catch (error) {
+        console.error("Error writing file:", error)
+        res.status(500).json({ error: "Failed to save file" })
     }
 })
 

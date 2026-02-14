@@ -2,7 +2,12 @@ import { useState, useMemo, useCallback } from "react"
 import axios from "axios"
 import { ParserFunc, ScrapedItem } from "../types"
 
-export const useScraper = (parserFunc: ParserFunc, initialUrl: string = "") => {
+export const useScraper = (
+    parserFunc: ParserFunc,
+    initialUrl: string = "",
+    onlyToday: boolean,
+    setOnlyToday: (val: boolean) => void
+) => {
     const [url, setUrl] = useState<string>(initialUrl)
     const [htmlInput, setHtmlInput] = useState<string>("")
     const [rawResult, setRawResult] = useState<ScrapedItem[] | null>(null)
@@ -11,7 +16,6 @@ export const useScraper = (parserFunc: ParserFunc, initialUrl: string = "") => {
 
     // Filter settings
     const [filterPast, setFilterPast] = useState<boolean>(true)
-    const [onlyToday, setOnlyToday] = useState<boolean>(false)
     const [maxResults, setMaxResults] = useState<number>(4)
 
     const result = useMemo(() => {

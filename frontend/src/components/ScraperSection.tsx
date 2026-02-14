@@ -8,9 +8,19 @@ interface ScraperSectionProps {
     parserFunc: ParserFunc
     triggerFetch?: number
     onResult?: (title: string, items: ScrapedItem[] | null) => void
+    onlyToday: boolean
+    setOnlyToday: (val: boolean) => void
 }
 
-export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUrl, parserFunc, triggerFetch, onResult }) => {
+export const ScraperSection: React.FC<ScraperSectionProps> = ({
+    title,
+    defaultUrl,
+    parserFunc,
+    triggerFetch,
+    onResult,
+    onlyToday,
+    setOnlyToday
+}) => {
     const {
         url,
         setUrl,
@@ -21,14 +31,12 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUr
         copied,
         filterPast,
         setFilterPast,
-        onlyToday,
-        setOnlyToday,
         maxResults,
         setMaxResults,
         handleFetchAndParse,
         handleManualParse,
         handleCopy,
-    } = useScraper(parserFunc, defaultUrl)
+    } = useScraper(parserFunc, defaultUrl, onlyToday, setOnlyToday)
 
     useEffect(() => {
         if (triggerFetch && triggerFetch > 0) {
