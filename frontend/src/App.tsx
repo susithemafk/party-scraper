@@ -52,12 +52,24 @@ const App: React.FC = () => {
     }, [allResults])
 
     const handleCopyAll = useCallback(() => {
-        if (aggregatedResults.length === 0) return
-        navigator.clipboard.writeText(JSON.stringify(aggregatedResults, null, 4)).then(() => {
+        const output: Record<string, { date: string | null; url: string }[]> = {}
+
+        Object.entries(allResults).forEach(([venue, items]) => {
+            if (items && items.length > 0) {
+                output[venue] = items.map((item) => ({
+                    date: item.date,
+                    url: item.url,
+                }))
+            }
+        })
+
+        if (Object.keys(output).length === 0) return
+
+        navigator.clipboard.writeText(JSON.stringify(output, null, 4)).then(() => {
             setCopiedAll(true)
             setTimeout(() => setCopiedAll(false), 2000)
         })
-    }, [aggregatedResults])
+    }, [allResults])
 
     return (
         <div className="container">
@@ -74,7 +86,7 @@ const App: React.FC = () => {
                         className="copy-btn"
                         style={{ background: copiedAll ? "var(--success)" : "var(--primary)" }}
                     >
-                        {copiedAll ? "Copied All!" : `Copy All (${aggregatedResults.length})`}
+                        {copiedAll ? "Copied All (JSON)!" : `Copy All (${aggregatedResults.length})`}
                     </button>
                 )}
             </div>
@@ -89,7 +101,7 @@ const App: React.FC = () => {
                 />
 
                 <ScraperSection
-                    title="Fraktal (via RA)"
+                    title="Fraktal"
                     defaultUrl="https://ra.co/clubs/224489"
                     parserFunc={raParser}
                     triggerFetch={triggerAll}
@@ -145,7 +157,7 @@ const App: React.FC = () => {
                 />
 
                 <ScraperSection
-                    title="Artbar Club"
+                    title="Artbar"
                     defaultUrl="https://www.artbar.club/shows"
                     parserFunc={artbarParser}
                     triggerFetch={triggerAll}

@@ -93,6 +93,17 @@ p.subtitle {
     border-radius: 1rem;
     border: 1px solid var(--border);
     margin-bottom: 2rem;
+    transition: all 0.3s ease;
+}
+
+.scraper-section.empty-result {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.scraper-section.empty-result .section-title {
+    color: #ef4444;
+    border-bottom-color: #ef4444;
 }
 
 .section-title {
@@ -187,6 +198,30 @@ input[type="text"] {
 textarea {
     height: 200px;
     resize: vertical;
+}
+
+.manual-html-textarea {
+    height: 100px !important;
+    font-size: 0.8rem !important;
+    padding: 0.8rem !important;
+    margin-bottom: 1rem;
+}
+
+.secondary-button {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--primary) !important;
+    color: var(--text) !important;
+}
+
+.secondary-button:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.1) !important;
+    border-color: var(--primary-light) !important;
+}
+
+.secondary-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: var(--border) !important;
 }
 
 textarea:focus,

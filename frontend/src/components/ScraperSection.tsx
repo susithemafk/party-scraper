@@ -14,6 +14,8 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUr
     const {
         url,
         setUrl,
+        htmlInput,
+        setHtmlInput,
         result,
         loading,
         copied,
@@ -24,6 +26,7 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUr
         maxResults,
         setMaxResults,
         handleFetchAndParse,
+        handleManualParse,
         handleCopy,
     } = useScraper(parserFunc, defaultUrl)
 
@@ -39,8 +42,10 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUr
         }
     }, [result, onResult, title])
 
+    const isEmpty = result !== null && result.length === 0 && !loading
+
     return (
-        <div className="scraper-section">
+        <div className={`scraper-section ${isEmpty ? "empty-result" : ""}`}>
             <h2 className="section-title">{title}</h2>
 
             <div className="input-group">
@@ -48,6 +53,14 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUr
                 <div style={{ display: "flex", gap: "1rem", marginBottom: "0.8rem" }}>
                     <input type="text" placeholder="Enter website URL..." value={url} onChange={(e) => setUrl(e.target.value)} />
                 </div>
+
+                <div className="field-label">OR PASTE HTML:</div>
+                <textarea
+                    placeholder="Paste website source code here if automatic fetch fails..."
+                    value={htmlInput}
+                    onChange={(e) => setHtmlInput(e.target.value)}
+                    className="manual-html-textarea"
+                />
 
                 <div className="filter-controls">
                     <label>
@@ -72,6 +85,14 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUr
                     <button onClick={handleFetchAndParse} disabled={loading} style={{ flex: 1 }}>
                         {loading && <span className="loader"></span>}
                         Fetch & Find
+                    </button>
+                    <button
+                        onClick={handleManualParse}
+                        disabled={!htmlInput.trim()}
+                        className="secondary-button"
+                        style={{ flex: 1 }}
+                    >
+                        Parse Manual HTML
                     </button>
                 </div>
             </div>
