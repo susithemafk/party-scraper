@@ -6,7 +6,6 @@ interface ScraperSectionProps {
     title: string
     defaultUrl: string
     parserFunc: ParserFunc
-    triggerFetch?: number
     onResult?: (title: string, items: ScrapedItem[] | null) => void
     onlyToday: boolean
     setOnlyToday: (val: boolean) => void
@@ -16,7 +15,6 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({
     title,
     defaultUrl,
     parserFunc,
-    triggerFetch,
     onResult,
     onlyToday,
     setOnlyToday
@@ -37,12 +35,6 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({
         handleManualParse,
         handleCopy,
     } = useScraper(parserFunc, defaultUrl, onlyToday, setOnlyToday)
-
-    useEffect(() => {
-        if (triggerFetch && triggerFetch > 0) {
-            handleFetchAndParse()
-        }
-    }, [triggerFetch, handleFetchAndParse])
 
     useEffect(() => {
         if (onResult) {

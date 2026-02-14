@@ -2,6 +2,8 @@ import React, { useState, useCallback, useMemo } from "react"
 import axios from "axios"
 import "./App.css"
 import { ScraperSection } from "./components/ScraperSection"
+import { InstagramGeneratorPage } from "./components/InstagramGenerator"
+import { AiProcessor } from "./components/AiProcessor"
 import { artbarParser } from "./parsers/artbar"
 import { kabinetParser } from "./parsers/kabinet"
 import { sonoParser } from "./parsers/sono"
@@ -31,6 +33,7 @@ const App: React.FC = () => {
     const [copiedAll, setCopiedAll] = useState(false)
     const [savedAll, setSavedAll] = useState(false)
     const [globalOnlyToday, setGlobalOnlyToday] = useState(true)
+    const [view, setView] = useState<"scraper" | "instagram">("scraper")
 
     const handleFetchAll = useCallback(() => {
         setAllResults({})
@@ -112,60 +115,96 @@ const App: React.FC = () => {
 
     return (
         <div className="container">
-            <h1>Party Scraper</h1>
-            <p className="subtitle">Automated Event Intelligence</p>
-
-            <div className="bulk-controls" style={{ marginBottom: "2rem", display: "flex", gap: "1rem", justifyContent: "center", alignItems: "center" }}>
-                <button onClick={handleFetchAll} className="fetch-all-btn">
-                    FETCH ALL SCRAPERS ({VENUES.length})
+            <div className="view-selector" style={{ display: "flex", gap: "1rem", justifyContent: "center", marginBottom: "2rem" }}>
+                <button
+                    onClick={() => setView("scraper")}
+                    style={{
+                        padding: "0.5rem 1.5rem",
+                        borderRadius: "2rem",
+                        border: "1px solid var(--primary)",
+                        background: view === "scraper" ? "var(--primary)" : "transparent",
+                        color: "white",
+                        cursor: "pointer"
+                    }}
+                >
+                    Scraper Dashboard
                 </button>
-                <label className="global-filter" style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.9rem", color: "var(--text-muted)" }}>
-                    <input
-                        type="checkbox"
-                        checked={globalOnlyToday}
-                        onChange={(e) => setGlobalOnlyToday(e.target.checked)}
-                        style={{ width: "1.1rem", height: "1.1rem", accentColor: "var(--primary)" }}
-                    />
-                    ONLY TODAY (GLOBAL)
-                </label>
-                {aggregatedResults.length > 0 && (
-                    <div style={{ display: "flex", gap: "1rem" }}>
-                        <button
-                            onClick={handleCopyAll}
-                            className="copy-btn"
-                            style={{ background: copiedAll ? "var(--success)" : "var(--primary)" }}
-                        >
-                            {copiedAll ? "Copied All (JSON)!" : `Copy All (${aggregatedResults.length})`}
-                        </button>
-                        <button
-                            onClick={handleSaveInputFile}
-                            className="copy-btn"
-                            style={{
-                                background: savedAll ? "var(--success)" : "transparent",
-                                border: "1px solid var(--primary)",
-                                color: "var(--text)"
-                            }}
-                        >
-                            {savedAll ? "Saved to input.json!" : "Save input.json"}
-                        </button>
-                    </div>
-                )}
+                <button
+                    onClick={() => setView("instagram")}
+                    style={{
+                        padding: "0.5rem 1.5rem",
+                        borderRadius: "2rem",
+                        border: "1px solid var(--primary)",
+                        background: view === "instagram" ? "var(--primary)" : "transparent",
+                        color: "white",
+                        cursor: "pointer"
+                    }}
+                >
+                    Instagram Generator
+                </button>
             </div>
 
-            <div className="main-content">
-                {VENUES.map((venue) => (
-                    <ScraperSection
-                        key={venue.title}
-                        title={venue.title}
-                        defaultUrl={venue.url}
-                        parserFunc={venue.parser}
-                        triggerFetch={triggerAll}
-                        onResult={handleResult}
-                        onlyToday={globalOnlyToday}
-                        setOnlyToday={setGlobalOnlyToday}
-                    />
-                ))}
-            </div>
+            {view === "instagram" ? (
+                <InstagramGeneratorPage data={allResults} />
+            ) : (
+                <>
+                    <h1>Party Scraper</h1>
+                    <p className="subtitle">Automated Event Intelligence</p>
+
+                    <div className="bulk-controls" style={{ marginBottom: "2rem", display: "flex", gap: "1rem", justifyContent: "center", alignItems: "center" }}>
+                        <button onClick={handleFetchAll} className="fetch-all-btn">
+                            FETCH ALL SCRAPERS ({VENUES.length})
+                        </button>
+                        <label className="global-filter" style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.9rem", color: "var(--text-muted)" }}>
+                            <input
+                                type="checkbox"
+                                checked={globalOnlyToday}
+                                onChange={(e) => setGlobalOnlyToday(e.target.checked)}
+                                style={{ width: "1.1rem", height: "1.1rem", accentColor: "var(--primary)" }}
+                            />
+                            ONLY TODAY (GLOBAL)
+                        </label>
+                        {aggregatedResults.length > 0 && (
+                            <div style={{ display: "flex", gap: "1rem" }}>
+                                <button
+                                    onClick={handleCopyAll}
+                                    className="copy-btn"
+                                    style={{ background: copiedAll ? "var(--success)" : "var(--primary)" }}
+                                >
+                                    {copiedAll ? "Copied All (JSON)!" : `Copy All (${aggregatedResults.length})`}
+                                </button>
+                                <button
+                                    onClick={handleSaveInputFile}
+                                    className="copy-btn"
+                                    style={{
+                                        background: savedAll ? "var(--success)" : "transparent",
+                                        border: "1px solid var(--primary)",
+                                        color: "var(--text)"
+                                    }}
+                                >
+                                    {savedAll ? "Saved to input.json!" : "Save input.json"}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="main-content">
+                        <AiProcessor inputData={aggregatedResults} />
+
+                        {VENUES.map((venue) => (
+                            <ScraperSection
+                                key={venue.title}
+                                title={venue.title}
+                                defaultUrl={venue.url}
+                                parserFunc={venue.parser}
+                                onResult={handleResult}
+                                onlyToday={globalOnlyToday}
+                                setOnlyToday={setGlobalOnlyToday}
+                            />
+                        ))}
+                    </div>
+                </>
+            )}
         </div>
     )
 }

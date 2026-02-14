@@ -1,20 +1,42 @@
 {
-    "Bobyhall": [
+    "První patro": [
         {
-            "date": "2026-02-20",
-            "url": "https://bobyhall.cz/sonarix-20-2-2026-2030/"
+            "date": "2026-02-14",
+            "url": "https://patrobrno.cz/events/expe-hory-prenasi-iii-ples-expedition-clubu/"
+        }
+    ],
+    "Artbar": [
+        {
+            "date": "2026-02-14",
+            "url": "https://tootoot.fm/cs/events/69723fa66a0b507c25949d26"
+        }
+    ],
+    "Perpetuum": [
+        {
+            "date": "2026-02-14",
+            "url": "https://www.perpetuumklub.cz/program/871128045742540-dystopia-club-perpetuum"
+        }
+    ],
+    "Sono Music Club": [
+        {
+            "date": "2026-02-14",
+            "url": "https://www.sono.cz/event/valentynska-seznamovaci-party-2/"
+        }
+    ],
+    "Metro Music Bar": [
+        {
+            "date": "2026-02-14",
+            "url": "https://www.metromusic.cz/program/perfect-saturday-124/"
+        }
+    ],
+    "Fléda": [
+        {
+            "date": "2026-02-14",
+            "url": "https://www.fleda.cz/event/2355/"
         },
         {
-            "date": "2026-02-21",
-            "url": "https://bobyhall.cz/cosples-2026-21-2-2026-1800/"
-        },
-        {
-            "date": "2026-02-26",
-            "url": "https://bobyhall.cz/the-grand-stars-orchestra-hollywood-music-experience-26-2-2026-1900/"
-        },
-        {
-            "date": "2026-02-27",
-            "url": "https://bobyhall.cz/korolova-ua-27-2-2026-2000/"
+            "date": "2026-02-14",
+            "url": "https://www.fleda.cz/event/2321/"
         }
     ]
 }

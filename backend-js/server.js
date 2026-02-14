@@ -3,12 +3,37 @@ const puppeteer = require("puppeteer")
 const cors = require("cors")
 const fs = require("fs")
 const path = require("path")
+const axios = require("axios")
 
 const app = express()
 const port = 3001 // Using 3001 to avoid conflict with Python backend
 
 app.use(cors())
 app.use(express.json({ limit: "50mb" }))
+
+// --- Image Proxy to bypass CORS ---
+app.get("/proxy-image", async (req, res) => {
+    const { url } = req.query
+    if (!url) return res.status(400).send("URL is required")
+
+    try {
+        const response = await axios({
+            method: "get",
+            url: url,
+            responseType: "stream",
+        })
+
+        // Forward the content-type from the source
+        res.set("Content-Type", response.headers["content-type"])
+        // Ensure CORS is allowed for the client
+        res.set("Access-Control-Allow-Origin", "*")
+
+        response.data.pipe(res)
+    } catch (error) {
+        console.error(`[Proxy] Error fetching image at ${url}:`, error.message)
+        res.status(500).send("Error fetching image")
+    }
+})
 
 // --- Pure HTML Fetcher Endpoint ---
 app.post("/fetch-html", async (req, res) => {
