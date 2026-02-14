@@ -1,4 +1,5 @@
 import { useState } from "react"
+import axios from "axios"
 import "./App.css"
 
 function App() {
@@ -20,11 +21,10 @@ function App() {
         return `${year}-${month}-${day}`
     }
 
-    const handleManualParse = () => {
-        if (!htmlInput.trim()) return
-
+    const parseHtmlAndSetResult = (htmlString) => {
+        console.log(htmlString)
         const parser = new DOMParser()
-        const doc = parser.parseFromString(htmlInput, "text/html")
+        const doc = parser.parseFromString(htmlString, "text/html")
 
         const events = Array.from(doc.querySelectorAll('a[data-hook="ev-rsvp-button"]'))
             .map((btn) => {
@@ -43,25 +43,43 @@ function App() {
         setResult(uniqueEvents)
     }
 
-    const handleAutoScrape = async () => {
+    const handleManualParse = () => {
+        if (!htmlInput.trim()) return
+        parseHtmlAndSetResult(htmlInput)
+    }
+
+    // Uses the NEW /fetch-html endpoint + Axios + Client-side finding
+    const handleFetchAndParse = async () => {
         if (!url.trim()) return
         setLoading(true)
         setResult(null)
 
         try {
-            const response = await fetch("http://localhost:8000/scrape", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url }),
-            })
-
-            if (!response.ok) throw new Error("Scrape failed")
-
-            const data = await response.json()
-            setResult(data)
+            const response = await axios.post("http://localhost:3001/fetch-html", { url })
+            const html = response.data.html
+            parseHtmlAndSetResult(html)
         } catch (err) {
             console.error(err)
-            alert("Failed to scrape. Make sure the backend (FastAPI) is running on port 8000.")
+            const msg = err.response?.data?.detail || err.message
+            alert(`Fetch failed: ${msg}`)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Original AI-based scraping
+    const handleAiScrape = async () => {
+        if (!url.trim()) return
+        setLoading(true)
+        setResult(null)
+
+        try {
+            const response = await axios.post("http://localhost:8000/scrape", { url })
+            setResult(response.data)
+        } catch (err) {
+            console.error(err)
+            const msg = err.response?.data?.detail || err.message
+            alert(`AI Scrape failed: ${msg}`)
         } finally {
             setLoading(false)
         }
@@ -82,18 +100,28 @@ function App() {
 
             <div className="input-section">
                 <div>
-                    <div className="field-label">AUTOMATIC URL SCRAPE:</div>
-                    <div style={{ display: "flex", gap: "1rem" }}>
+                    <div className="field-label">AUTOMATIC URL:</div>
+                    <div style={{ display: "flex", gap: "1rem", marginBottom: "0.8rem" }}>
                         <input type="text" placeholder="e.g., https://artbar.club/program/" value={url} onChange={(e) => setUrl(e.target.value)} />
-                        <button onClick={handleAutoScrape} disabled={loading}>
+                    </div>
+                    <div className="button-group">
+                        <button onClick={handleFetchAndParse} disabled={loading} style={{ flex: 1 }}>
                             {loading && <span className="loader"></span>}
-                            {loading ? "Scraping..." : "Go"}
+                            Fetch & Find (JS Library)
+                        </button>
+                        <button
+                            onClick={handleAiScrape}
+                            disabled={loading}
+                            style={{ flex: 1, background: "linear-gradient(135deg, #c084fc 0%, #a855f7 100%)" }}
+                        >
+                            {loading && <span className="loader"></span>}
+                            AI Data Extraction (Gemini)
                         </button>
                     </div>
                 </div>
 
                 <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1.5rem" }}>
-                    <div className="field-label">OR MANUAL UL PARSE (ARTBAR):</div>
+                    <div className="field-label">MANUAL UL PARSE:</div>
                     <textarea placeholder="Paste <ul>...</ul> here..." value={htmlInput} onChange={(e) => setHtmlInput(e.target.value)} />
                     <button className="secondary-btn" onClick={handleManualParse}>
                         Process Manual HTML
