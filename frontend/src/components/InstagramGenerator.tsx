@@ -24,7 +24,7 @@ const InstagramPost: React.FC<PostProps> = ({ event }) => {
     const postRef = useRef<HTMLDivElement>(null)
 
     // Pomocná konstanta pro CORS proxy
-    const proxiedImageUrl = event.image_url ? `http://localhost:3001/proxy-image?url=${encodeURIComponent(event.image_url)}` : null
+    const proxiedImageUrl = event.image_url ? `http://localhost:8000/proxy-image?url=${encodeURIComponent(event.image_url)}` : null
 
     const exportImage = useCallback(() => {
         if (postRef.current === null) return
@@ -137,7 +137,7 @@ export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> =
 
     const handleLoadOutputJson = async () => {
         try {
-            const response = await axios.get("http://localhost:3001/load-output")
+            const response = await axios.get("http://localhost:8000/load-output")
             setManualData(response.data)
             setJsonInput(JSON.stringify(response.data, null, 4))
         } catch (err) {

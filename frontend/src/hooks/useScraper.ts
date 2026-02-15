@@ -61,7 +61,7 @@ export const useScraper = (
         setRawResult(null)
 
         try {
-            const response = await axios.post("http://localhost:3001/fetch-html", { url })
+            const response = await axios.post("http://localhost:8000/fetch-html", { url })
             const html = response.data.html
             const data = parserFunc ? parserFunc(html) : []
             setRawResult(data)

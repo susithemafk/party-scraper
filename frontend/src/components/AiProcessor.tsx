@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { ScrapedItem } from "../types"
 
 interface AiProcessorProps {
@@ -8,24 +8,44 @@ interface AiProcessorProps {
 
 export const AiProcessor: React.FC<AiProcessorProps> = ({ inputData = [], onComplete }) => {
     const [results, setResults] = useState<Record<string, any[]>>({}) // Dictionary format
+    const [payload, setPayload] = useState<string>("{}")
     const [loading, setLoading] = useState<boolean>(false)
     const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
     const [copied, setCopied] = useState<boolean>(false)
 
-    const handleProcessAi = async () => {
-        if (!inputData || inputData.length === 0) return
-
-        setLoading(true)
-        setResults({}) // Clear as dictionary
-        setProgress({ current: 0, total: inputData.length })
-
-        // Group inputData back to { Venue: [events] } for the backend
+    // Compute and sync the payload when inputData changes
+    useEffect(() => {
         const batchData: Record<string, { url: string; date: string | null }[]> = {}
         inputData.forEach(item => {
             const venue = item.venue || "Other"
             if (!batchData[venue]) batchData[venue] = []
             batchData[venue].push({ url: item.url, date: item.date })
         })
+        setPayload(JSON.stringify(batchData, null, 4))
+    }, [inputData])
+
+    // Update parent whenever results change (manual or automatic)
+    useEffect(() => {
+        if (onComplete && Object.keys(results).length > 0) {
+            onComplete(results)
+        }
+    }, [results, onComplete])
+
+    const handleProcessAi = async () => {
+        let finalPayload
+        try {
+            finalPayload = JSON.parse(payload)
+        } catch (e) {
+            alert("Invalid JSON in Payload Preview. Please fix it before starting.")
+            return
+        }
+
+        const totalItems = Object.values(finalPayload).flat().length
+        if (totalItems === 0) return
+
+        setLoading(true)
+        setResults({}) // Clear as dictionary
+        setProgress({ current: 0, total: totalItems })
 
         let itemsCount = 0
         const currentResults: Record<string, any[]> = {}
@@ -34,7 +54,7 @@ export const AiProcessor: React.FC<AiProcessorProps> = ({ inputData = [], onComp
             const response = await fetch("http://localhost:8000/scrape-batch-stream", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(batchData),
+                body: JSON.stringify(finalPayload),
             })
 
             if (!response.body) throw new Error("No response body")
@@ -87,6 +107,11 @@ export const AiProcessor: React.FC<AiProcessorProps> = ({ inputData = [], onComp
         })
     }
 
+    const [resultsText, setResultsText] = useState("{}")
+    useEffect(() => {
+        setResultsText(JSON.stringify(results, null, 4))
+    }, [results])
+
     const flatResults = Object.values(results).flat()
 
     return (
@@ -107,6 +132,27 @@ export const AiProcessor: React.FC<AiProcessorProps> = ({ inputData = [], onComp
                         </div>
                     )}
                 </div>
+
+                <div className="field-label" style={{ fontSize: "0.7rem", opacity: 0.9, marginBottom: "0.5rem", color: "var(--primary)" }}>
+                    API PAYLOAD PREVIEW (EDITABLE):
+                </div>
+                <textarea
+                    value={payload}
+                    onChange={(e) => setPayload(e.target.value)}
+                    style={{
+                        width: "100%",
+                        height: "120px",
+                        fontSize: "0.7rem",
+                        fontFamily: "monospace",
+                        background: "rgba(0,0,0,0.5)",
+                        color: "#eee",
+                        border: "1px solid var(--primary)",
+                        borderRadius: "4px",
+                        padding: "8px",
+                        marginBottom: "1rem",
+                        resize: "vertical"
+                    }}
+                />
 
                 {loading && (
                     <div className="progress-bar-container" style={{ width: "100%", height: "8px", background: "rgba(255,255,255,0.1)", borderRadius: "4px", marginBottom: "1rem", overflow: "hidden" }}>
@@ -145,35 +191,34 @@ export const AiProcessor: React.FC<AiProcessorProps> = ({ inputData = [], onComp
             {flatResults.length > 0 && (
                 <div className="results-section" style={{ marginTop: "2rem" }}>
                     <div className="field-label result" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span>LATEST RESULTS:</span>
+                        <span>LATEST RESULTS (EDITABLE):</span>
                         <button className="copy-btn" onClick={handleCopy} style={{ background: copied ? "var(--success)" : "rgba(255,255,255,0.1)", fontSize: "0.7rem", padding: "4px 8px" }}>
                             {copied ? "Copied!" : "Copy JSON"}
                         </button>
                     </div>
 
-                    <div className="results-grid" style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                        gap: "10px",
-                        maxHeight: "300px",
-                        overflowY: "auto",
-                        padding: "10px",
-                        background: "rgba(0,0,0,0.2)",
-                        borderRadius: "8px"
-                    }}>
-                        {flatResults.map((res: any, idx: number) => (
-                            <div key={idx} style={{
-                                padding: "8px",
-                                background: res.error ? "rgba(239, 68, 68, 0.1)" : "rgba(255,255,255,0.05)",
-                                border: res.error ? "1px solid #ef4444" : "1px solid rgba(255,255,255,0.1)",
-                                borderRadius: "4px",
-                                fontSize: "0.8rem"
-                            }}>
-                                <div style={{ fontWeight: "bold", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{res.title || "Processing..."}</div>
-                                <div style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>{res.date}</div>
-                            </div>
-                        ))}
-                    </div>
+                    <textarea
+                        value={resultsText}
+                        onChange={(e) => {
+                            setResultsText(e.target.value)
+                            try {
+                                const parsed = JSON.parse(e.target.value)
+                                setResults(parsed)
+                            } catch (err) {}
+                        }}
+                        style={{
+                            width: "100%",
+                            height: "300px",
+                            fontSize: "0.75rem",
+                            fontFamily: "monospace",
+                            background: "rgba(0,0,0,0.5)",
+                            color: "#eee",
+                            border: "1px solid var(--success)",
+                            borderRadius: "8px",
+                            padding: "12px",
+                            resize: "vertical"
+                        }}
+                    />
                 </div>
             )}
         </div>

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -9,6 +9,9 @@ import asyncio
 import platform
 import logging
 import json
+import httpx
+import aiofiles
+from playwright.async_api import async_playwright
 
 # --- 1. KRITICKÁ ČÁST PRO WINDOWS ---
 # Musí to být úplně nahoře, dříve než se vytvoří jakákoliv async smyčka
@@ -111,6 +114,80 @@ async def scrape_batch_stream(request: dict):
                         yield json.dumps({venue: [{"url": url, "error": str(e)}]}) + "\n"
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
+
+
+@app.get("/proxy-image")
+async def proxy_image(url: str):
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, follow_redirects=True)
+            response.raise_for_status()
+            return Response(
+                content=response.content,
+                media_type=response.headers.get("content-type", "image/jpeg"),
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+    except Exception as e:
+        print(f"[Proxy] Error fetching image at {url}: {e}")
+        raise HTTPException(status_code=500, detail="Error fetching image")
+
+
+@app.post("/fetch-html")
+async def fetch_html(request: dict):
+    url = request.get("url")
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    print(f"[Fetcher] Requesting HTML for: {url}")
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            # Simulate a real user agent to bypass basic checks
+            await page.set_extra_http_headers({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            })
+
+            # Wait for network idle to ensure dynamic content load
+            await page.goto(url, wait_until="networkidle", timeout=60000)
+            html = await page.content()
+            await browser.close()
+
+            print(f"[Fetcher] Successfully retrieved {len(html)} characters")
+            return {"html": html}
+    except Exception as e:
+        print(f"[Fetcher] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/save-json")
+async def save_json(data: dict):
+    file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "input.json")
+    try:
+        async with aiofiles.open(file_path, mode='w', encoding='utf-8') as f:
+            await f.write(json.dumps(data, indent=4, ensure_ascii=False))
+        return {"message": "File successfully saved in project root"}
+    except Exception as e:
+        print(f"Error writing file: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save file")
+
+
+@app.get("/load-output")
+async def load_output():
+    file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output.json")
+    try:
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="output.json not found")
+
+        async with aiofiles.open(file_path, mode='r', encoding='utf-8') as f:
+            content = await f.read()
+            return json.loads(content)
+    except Exception as e:
+        print(f"Error reading output.json: {e}")
+        raise HTTPException(status_code=500, detail="Failed to read output.json")
 
 
 @app.get("/health")
