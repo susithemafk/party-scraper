@@ -141,7 +141,7 @@ export const AiProcessor: React.FC<AiProcessorProps> = ({ inputData = [], onComp
                     onChange={(e) => setPayload(e.target.value)}
                     style={{
                         width: "100%",
-                        height: "120px",
+                        height: "400px",
                         fontSize: "0.7rem",
                         fontFamily: "monospace",
                         background: "rgba(0,0,0,0.5)",

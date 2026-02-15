@@ -1,6 +1,5 @@
-import axios from "axios"
 import { toJpeg } from "html-to-image"
-import React, { useCallback, useRef, useState } from "react"
+import React, { useCallback, useRef } from "react"
 import styles from "./InstagramGenerator.module.css"
 
 // --- Definice Typů ---
@@ -113,72 +112,25 @@ const InstagramPost: React.FC<PostProps> = ({ event }) => {
     )
 }
 
-// --- Hlavní stránka s iterací přes JSON ---
+// --- Hlavní stránka s iterací přes data z AI Processor ---
 export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> = ({ data }) => {
-    const [jsonInput, setJsonInput] = useState("")
-    const [manualData, setManualData] = useState<Record<string, any[]> | null>(null)
-
-    const displayData = manualData || data
-    const allEvents = Object.entries(displayData)
+    const allEvents = Object.entries(data)
         .flatMap(([venueName, events]) => (Array.isArray(events) ? events.map((event) => ({
             venue: venueName, // Default to the key
             ...event // If event already has a venue (from AI), it will overwrite the default
         })) : []))
         .filter((e) => e.title) // Filter out raw scraped items without titles
 
-    const handleApplyJson = () => {
-        try {
-            const parsed = JSON.parse(jsonInput)
-            setManualData(parsed)
-        } catch (e) {
-            alert("Invalid JSON format. Please paste JSON from output.json")
-        }
-    }
-
-    const handleLoadOutputJson = async () => {
-        try {
-            const response = await axios.get("http://localhost:8000/load-output")
-            setManualData(response.data)
-            setJsonInput(JSON.stringify(response.data, null, 4))
-        } catch (err) {
-            console.error("Failed to load output.json:", err)
-            alert("Could not load output.json. Make sure the backend is running and the file exists.")
-        }
-    }
-
     return (
         <div className={styles.pageContainer}>
             <h1 style={{ textAlign: "center", marginBottom: "20px" }}>Instagram Content Generator</h1>
 
-            <div className={styles.jsonInputSection}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                    <h3 style={{ margin: 0 }}>Paste processed JSON (e.g. from output.json)</h3>
-                    <button onClick={handleLoadOutputJson} className="copy-btn" style={{ background: "var(--success)" }}>
-                        Load output.json from disk
-                    </button>
-                </div>
-                <textarea
-                    className={styles.textarea}
-                    placeholder='{ "Venue": [ { "title": "...", "image_url": "..." } ] }'
-                    value={jsonInput}
-                    onChange={(e) => setJsonInput(e.target.value)}
-                />
-                <button onClick={handleApplyJson} className="copy-btn" style={{ background: "var(--primary)" }}>
-                    Apply JSON Data
-                </button>
-                {manualData && (
-                    <button onClick={() => setManualData(null)} className={styles.clearBtn}>
-                        Clear Manual Data
-                    </button>
-                )}
-            </div>
-
             <div className={styles.eventsList}>
                 {allEvents.length === 0 ? (
                     <div className={styles.emptyState}>
-                        <p>No events found to generate posts.</p>
+                        <p>No processed events found.</p>
                         <p>
-                            Please paste processed results from <strong>output.json</strong> above.
+                            Please run the <strong>AI Processor</strong> in the Scraper Dashboard first.
                         </p>
                     </div>
                 ) : (

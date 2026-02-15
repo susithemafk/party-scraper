@@ -10,7 +10,6 @@ import platform
 import logging
 import json
 import httpx
-import aiofiles
 from playwright.async_api import async_playwright
 
 # --- 1. KRITICKÁ ČÁST PRO WINDOWS ---
@@ -161,33 +160,6 @@ async def fetch_html(request: dict):
     except Exception as e:
         print(f"[Fetcher] Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/save-json")
-async def save_json(data: dict):
-    file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "input.json")
-    try:
-        async with aiofiles.open(file_path, mode='w', encoding='utf-8') as f:
-            await f.write(json.dumps(data, indent=4, ensure_ascii=False))
-        return {"message": "File successfully saved in project root"}
-    except Exception as e:
-        print(f"Error writing file: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save file")
-
-
-@app.get("/load-output")
-async def load_output():
-    file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output.json")
-    try:
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="output.json not found")
-
-        async with aiofiles.open(file_path, mode='r', encoding='utf-8') as f:
-            content = await f.read()
-            return json.loads(content)
-    except Exception as e:
-        print(f"Error reading output.json: {e}")
-        raise HTTPException(status_code=500, detail="Failed to read output.json")
 
 
 @app.get("/health")

@@ -124,60 +124,59 @@ const App: React.FC = () => {
                 </button>
             </div>
 
-            {view === "instagram" ? (
-                // Use aiResults if available, otherwise fall back to raw allResults formatted as a record
-                <InstagramGeneratorPage data={hasAiResults ? aiResults : allResults} />
-            ) : (
-                <>
-                    <h1>Party Scraper</h1>
-                    <p className="subtitle">Automated Event Intelligence</p>
+            <div className="main-content-wrapper" style={{ display: view === "instagram" ? "none" : "block" }}>
+                <h1>Party Scraper</h1>
+                <p className="subtitle">Automated Event Intelligence</p>
 
-                    <div
-                        className="bulk-controls"
-                        style={{ marginBottom: "2rem", display: "flex", gap: "1rem", justifyContent: "center", alignItems: "center" }}
+                <div
+                    className="bulk-controls"
+                    style={{ marginBottom: "2rem", display: "flex", gap: "1rem", justifyContent: "center", alignItems: "center" }}
+                >
+                    <button onClick={handleFetchAll} className="fetch-all-btn">
+                        FETCH ALL SCRAPERS ({VENUES.length})
+                    </button>
+                    <label
+                        className="global-filter"
+                        style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.9rem", color: "var(--text-muted)" }}
                     >
-                        <button onClick={handleFetchAll} className="fetch-all-btn">
-                            FETCH ALL SCRAPERS ({VENUES.length})
-                        </button>
-                        <label
-                            className="global-filter"
-                            style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.9rem", color: "var(--text-muted)" }}
-                        >
-                            <input
-                                type="checkbox"
-                                checked={globalOnlyToday}
-                                onChange={(e) => setGlobalOnlyToday(e.target.checked)}
-                                style={{ width: "1.1rem", height: "1.1rem", accentColor: "var(--primary)" }}
-                            />
-                            ONLY TODAY (GLOBAL)
-                        </label>
-                        {aggregatedResults.length > 0 && (
-                            <div style={{ display: "flex", gap: "1rem" }}>
-                                <button onClick={handleCopyAll} className="copy-btn" style={{ background: copiedAll ? "var(--success)" : "var(--primary)" }}>
-                                    {copiedAll ? "Copied All (JSON)!" : `Copy All (${aggregatedResults.length})`}
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                        <input
+                            type="checkbox"
+                            checked={globalOnlyToday}
+                            onChange={(e) => setGlobalOnlyToday(e.target.checked)}
+                            style={{ width: "1.1rem", height: "1.1rem", accentColor: "var(--primary)" }}
+                        />
+                        ONLY TODAY (GLOBAL)
+                    </label>
+                    {aggregatedResults.length > 0 && (
+                        <div style={{ display: "flex", gap: "1rem" }}>
+                            <button onClick={handleCopyAll} className="copy-btn" style={{ background: copiedAll ? "var(--success)" : "var(--primary)" }}>
+                                {copiedAll ? "Copied All (JSON)!" : `Copy All (${aggregatedResults.length})`}
+                            </button>
+                        </div>
+                    )}
+                </div>
 
-                    <div className="main-content">
-                        <AiProcessor inputData={aggregatedResults} onComplete={setAiResults} />
+                <div className="main-content">
+                    <AiProcessor inputData={aggregatedResults} onComplete={setAiResults} />
 
-                        {VENUES.map((venue) => (
-                            <ScraperSection
-                                key={venue.title}
-                                title={venue.title}
-                                defaultUrl={venue.url}
-                                parserFunc={venue.parser}
-                                onResult={handleResult}
-                                onlyToday={globalOnlyToday}
-                                setOnlyToday={setGlobalOnlyToday}
-                                trigger={triggerAll}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
+                    {VENUES.map((venue) => (
+                        <ScraperSection
+                            key={venue.title}
+                            title={venue.title}
+                            defaultUrl={venue.url}
+                            parserFunc={venue.parser}
+                            onResult={handleResult}
+                            onlyToday={globalOnlyToday}
+                            setOnlyToday={setGlobalOnlyToday}
+                            trigger={triggerAll}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            <div className="generator-wrapper" style={{ display: view === "instagram" ? "block" : "none" }}>
+                <InstagramGeneratorPage data={hasAiResults ? aiResults : allResults} />
+            </div>
         </div>
     )
 }
