@@ -16,20 +16,21 @@ import { bobyhallParser } from "./parsers/bobyhall"
 import { ScrapedItem } from "./types"
 
 const VENUES = [
-    { title: "Bobyhall", url: "https://bobyhall.cz/program-bobyhall/", parser: bobyhallParser },
-    { title: "Fraktal", url: "https://ra.co/clubs/224489", parser: raParser },
-    { title: "Metro Music Bar", url: "https://www.metromusic.cz/program/", parser: metroParser },
+    // { title: "Bobyhall", url: "https://bobyhall.cz/program-bobyhall/", parser: bobyhallParser },
+    // { title: "Fraktal", url: "https://ra.co/clubs/224489", parser: raParser },
+    // { title: "Metro Music Bar", url: "https://www.metromusic.cz/program/", parser: metroParser },
     { title: "První patro", url: "https://patrobrno.cz/", parser: patroParser },
-    { title: "Perpetuum", url: "https://www.perpetuumklub.cz/program/", parser: perpetuumParser },
-    { title: "Fléda", url: "https://www.fleda.cz/program/", parser: fledaParser },
-    { title: "Sono Music Club", url: "https://www.sono.cz/program/", parser: sonoParser },
-    { title: "Kabinet Múz", url: "https://www.kabinetmuz.cz/program", parser: kabinetParser },
-    { title: "Artbar", url: "https://www.artbar.club/shows", parser: artbarParser },
+    // { title: "Perpetuum", url: "https://www.perpetuumklub.cz/program/", parser: perpetuumParser },
+    // { title: "Fléda", url: "https://www.fleda.cz/program/", parser: fledaParser },
+    // { title: "Sono Music Club", url: "https://www.sono.cz/program/", parser: sonoParser },
+    // { title: "Kabinet Múz", url: "https://www.kabinetmuz.cz/program", parser: kabinetParser },
+    // { title: "Artbar", url: "https://www.artbar.club/shows", parser: artbarParser },
 ]
 
 const App: React.FC = () => {
     const [triggerAll, setTriggerAll] = useState(0)
     const [allResults, setAllResults] = useState<Record<string, ScrapedItem[]>>({})
+    const [aiResults, setAiResults] = useState<any[]>([])
     const [copiedAll, setCopiedAll] = useState(false)
     const [savedAll, setSavedAll] = useState(false)
     const [globalOnlyToday, setGlobalOnlyToday] = useState(true)
@@ -51,7 +52,10 @@ const App: React.FC = () => {
     }, [])
 
     const aggregatedResults = useMemo(() => {
-        const flattened = Object.values(allResults).flat()
+        // Flatten with venue info included
+        const flattened = Object.entries(allResults).flatMap(([venue, items]) =>
+            items.map(item => ({ ...item, venue }))
+        )
 
         // Deduplicate by URL
         const seenUrls = new Set<string>()
@@ -115,28 +119,6 @@ const App: React.FC = () => {
 
     return (
         <div className="container">
-            <button
-                onClick={async () => {
-                    const res = await axios.get("http://localhost:8000/")
-
-                    console.log(res)
-                }}
-            >
-                root call
-            </button>
-            <button
-                onClick={async () => {
-                    const res = await axios.post("http://localhost:8000/scrape", {
-                        date: "2026-02-14",
-                        url: "https://patrobrno.cz/events/expe-hory-prenasi-iii-ples-expedition-clubu/",
-                    })
-
-                    console.log(res)
-                }}
-            >
-                scrape call
-            </button>
-
             <div className="view-selector" style={{ display: "flex", gap: "1rem", justifyContent: "center", marginBottom: "2rem" }}>
                 <button
                     onClick={() => setView("scraper")}
@@ -167,7 +149,8 @@ const App: React.FC = () => {
             </div>
 
             {view === "instagram" ? (
-                <InstagramGeneratorPage data={allResults} />
+                // Use aiResults if available, otherwise fall back to raw allResults formatted as a record
+                <InstagramGeneratorPage data={aiResults.length > 0 ? { "AI Processed": aiResults } : allResults} />
             ) : (
                 <>
                     <h1>Party Scraper</h1>
@@ -197,23 +180,12 @@ const App: React.FC = () => {
                                 <button onClick={handleCopyAll} className="copy-btn" style={{ background: copiedAll ? "var(--success)" : "var(--primary)" }}>
                                     {copiedAll ? "Copied All (JSON)!" : `Copy All (${aggregatedResults.length})`}
                                 </button>
-                                <button
-                                    onClick={handleSaveInputFile}
-                                    className="copy-btn"
-                                    style={{
-                                        background: savedAll ? "var(--success)" : "transparent",
-                                        border: "1px solid var(--primary)",
-                                        color: "var(--text)",
-                                    }}
-                                >
-                                    {savedAll ? "Saved to input.json!" : "Save input.json"}
-                                </button>
                             </div>
                         )}
                     </div>
 
                     <div className="main-content">
-                        <AiProcessor inputData={aggregatedResults} />
+                        <AiProcessor inputData={aggregatedResults} onComplete={setAiResults} />
 
                         {VENUES.map((venue) => (
                             <ScraperSection
@@ -224,6 +196,7 @@ const App: React.FC = () => {
                                 onResult={handleResult}
                                 onlyToday={globalOnlyToday}
                                 setOnlyToday={setGlobalOnlyToday}
+                                trigger={triggerAll}
                             />
                         ))}
                     </div>

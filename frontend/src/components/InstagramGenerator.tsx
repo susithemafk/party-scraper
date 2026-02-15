@@ -120,7 +120,10 @@ export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> =
 
     const displayData = manualData || data
     const allEvents = Object.entries(displayData)
-        .flatMap(([venueName, events]) => (Array.isArray(events) ? events.map((event) => ({ ...event, venue: venueName })) : []))
+        .flatMap(([venueName, events]) => (Array.isArray(events) ? events.map((event) => ({
+            venue: venueName, // Default to the key
+            ...event // If event already has a venue (from AI), it will overwrite the default
+        })) : []))
         .filter((e) => e.title) // Filter out raw scraped items without titles
 
     const handleApplyJson = () => {
