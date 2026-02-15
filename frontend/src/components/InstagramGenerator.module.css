@@ -52,7 +52,8 @@
     left: 0;
     right: 0;
     height: 60%;
-    background: linear-gradient(to top, rgb(215 0 0 / 80%) 0%, rgba(0, 0, 0, 0.6) 60%, transparent 100%);
+    /* background: linear-gradient(to top, rgb(215 0 0 / 80%) 0%, rgba(0, 0, 0, 0.6) 60%, transparent 100%); */
+    background: linear-gradient(to top, rgb(0 0 0 / 80%) 0%, rgba(0, 0, 0, 0.6) 60%, transparent 100%);
     z-index: 2;
 }
 
@@ -63,18 +64,19 @@
 }
 
 .timeBadgeContainer {
-	/* display: flex;
+    /* display: flex;
 	justify-content: flex-start;
 	margin-bottom: 20px; */
 }
 
 .locationBadge {
-	font-size: 24px;
-	margin-bottom: 8px;
+    font-size: 24px;
+    margin-bottom: 8px;
 }
 
 .timeBadge {
     display: inline-block;
+    /* background-color: #00af1e; */
     background-color: #00af1e;
     color: white;
     padding: 8px 20px;
@@ -83,6 +85,7 @@
     border-radius: 50px;
     margin-bottom: 16px;
     text-transform: uppercase;
+    display: none;
 }
 
 .actionTitle {
@@ -97,7 +100,23 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-	background: none;
+    background: none;
+}
+
+.actionDetails {
+    display: flex;
+    align-items: center;
+    /* justify-content: center; */
+    gap: 12px;
+    font-size: 30px;
+}
+
+.detailItem {
+    font-size: 32px;
+    font-weight: 400;
+    line-height: 30px;
+    /* border-top: 2px solid white; */
+    /* padding-top: 10px; */
 }
 
 .locationContainer {
@@ -120,7 +139,7 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     background: black;
-	display: none;
+    display: none;
 }
 
 .downloadBtn {

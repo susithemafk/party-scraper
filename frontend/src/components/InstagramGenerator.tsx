@@ -83,11 +83,24 @@ const InstagramPost: React.FC<PostProps> = ({ event }) => {
                         {/* Badge s časem */}
                         <div className={styles.timeBadgeContainer}>
                             <div className={styles.timeBadge}>DNES {event.time && `| ${event.time}`}</div>
-							<div className={styles.locationBadge}>{event.venue || event.place || "Brno"}</div>
+                            {/* <div className={styles.locationBadge}>{event.venue || event.place || "Brno"}</div> */}
                         </div>
 
                         {/* Název akce - Maximální důraz */}
                         <h1 className={styles.actionTitle}>{event.title || "Název akce"}</h1>
+
+                        <div className={styles.actionDetails}>
+                            {/* Místo */}
+                            {event.venue && <div className={styles.detailItem}>{event.venue}</div>}
+
+                            {/* Čas */}
+                            {event.time && " | "}
+                            {event.time && <div className={styles.detailItem}>{event.time}</div>}
+
+                            {/* Cena */}
+							{event.price && " | "}
+                            {event.price && <div className={styles.detailItem}>{event.price}</div>}
+                        </div>
                     </div>
                 </div>
             </div>
