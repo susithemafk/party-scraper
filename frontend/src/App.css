@@ -229,7 +229,7 @@ p.subtitle {
 }
 
 textarea,
-input[type="text"] {
+input[type="text"], input[type="password"], input[type="email"] {
     width: 100%;
     background: #0f172a;
     color: #e2e8f0;

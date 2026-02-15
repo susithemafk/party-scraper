@@ -10,6 +10,7 @@ import platform
 import logging
 import json
 import httpx
+from instagrapi import Client
 from playwright.async_api import async_playwright
 
 # --- 1. KRITICKÁ ČÁST PRO WINDOWS ---
@@ -45,26 +46,146 @@ class ScrapeRequest(BaseModel):
     date: Optional[str] = None
 
 
+class IgLoginRequest(BaseModel):
+    email: Optional[str] = None
+    password: Optional[str] = None
+    session_id: Optional[str] = None
+    verification_code: Optional[str] = None
+
+
+class IgPostRequest(BaseModel):
+    images_base64: List[str]
+    caption: str
+    location_name: Optional[str] = None
+
+
+SESSION_PATH = "ig_session.json"
+cl = Client()
+
+
+def login_to_instagram(email=None, password=None, session_id=None, verification_code=None):
+    """Přihlásí se k IG pomocí emailu/hesla, session_id nebo vyřeší challenge."""
+    global cl
+    print(f"[IG-DEBUG] Starting login process. Session_id: {bool(session_id)}, Code: {bool(verification_code)}")
+
+    # 1. Challenge / 2FA (ponecháno beze změny)
+    if verification_code:
+        try:
+            cl.challenge_resolve(verification_code)
+            cl.dump_settings(SESSION_PATH)
+            return "success"
+        except Exception as e:
+            if email and password:
+                try:
+                    cl.login(email, password, verification_code=verification_code)
+                    cl.dump_settings(SESSION_PATH)
+                    return "success"
+                except Exception as e2:
+                    return f"Verification failed: {e2}"
+            return str(e)
+
+    # 2. Login přes Session ID
+    if session_id:
+        try:
+            from urllib.parse import unquote
+            # Očištění session_id (odstranění uvozovek a URL kódování)
+            session_id = unquote(session_id).strip('"').strip("'")
+
+            # Reset klienta pro čistý start
+            cl = Client()
+
+            # Extrakce user_id ze session_id (formát: user_id:token:...)
+            extracted_user_id = session_id.split(":")[0] if ":" in session_id else None
+
+            if not extracted_user_id:
+                return "Invalid Session ID format (missing user_id part)"
+
+            # Nastavíme cookies manuálně - toto nevyvolává síťový požadavek
+            cl.set_settings({}) # Inicializace prázdného nastavení
+            cl.set_device({
+                "app_version": "311.0.0.32.118", # Modernější verze
+                "android_version": 29,
+                "android_release": "10.0",
+                "dpi": "480dpi",
+                "resolution": "1080x1920",
+                "manufacturer": "Samsung",
+                "device": "SM-G973F",
+                "model": "beyond1",
+                "cpu": "exynos9820",
+                "version_code": "544155160",
+            })
+
+            # Vložíme session přímo do cookie jaru
+            cl.login_by_sessionid(session_id)
+
+            # Okamžitý test, zda nás IG vidí jako přihlášené
+            try:
+                cl.get_timeline_feed()
+                print(f"[IG-DEBUG] Session ID login successful! User ID: {cl.user_id}")
+                cl.dump_settings(SESSION_PATH)
+                return "success"
+            except Exception as e:
+                print(f"[IG-DEBUG] Session validation failed: {e}")
+                return "Session ID is expired or invalid"
+
+        except Exception as e:
+            print(f"[IG-DEBUG] SessionID Error: {type(e).__name__}: {e}")
+            if "JSONDecodeError" in str(e) or "column 1" in str(e):
+                return "Instagram blocked your IP or Session. Try refreshing Session ID in your browser."
+            return str(e)
+
+    # 3. Načtení ze souboru
+    if os.path.exists(SESSION_PATH):
+        try:
+            cl.load_settings(SESSION_PATH)
+            # Malý test validity
+            cl.get_timeline_feed()
+            return "success"
+        except:
+            if os.path.exists(SESSION_PATH): os.remove(SESSION_PATH)
+
+    # 4. Email + Heslo
+    if email and password:
+        try:
+            cl.login(email, password)
+            cl.dump_settings(SESSION_PATH)
+            return "success"
+        except Exception as e:
+            from instagrapi.exceptions import ChallengeRequired, TwoFactorRequired
+            if isinstance(e, (ChallengeRequired, TwoFactorRequired)) or "checkpoint" in str(e).lower():
+                return "challenge_required"
+            return str(e)
+
+    return "Missing credentials"
+
+
 @app.get("/")
 async def root():
     return {"message": "Party Scraper API is running."}
 
 
-@app.post("/scrape")
-async def scrape_url(request: ScrapeRequest):
-    # ... ponecháno pro kompatibilitu ...
-    print(f"Starting scrape: {request.url}")
-    try:
-        async with AsyncWebCrawler(verbose=True) as crawler:
-            detail = await asyncio.wait_for(
-                process_event(crawler, request.url, request.date or ""),
-                timeout=60.0
-            )
-            if not detail:
-                raise HTTPException(status_code=404, detail="Data extraction failed")
-            return detail
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@app.post("/ig-login")
+async def ig_login(request: IgLoginRequest):
+    print(f"\n[API] Received /ig-login request")
+    result = await asyncio.to_thread(
+        login_to_instagram,
+        email=request.email,
+        password=request.password,
+        session_id=request.session_id,
+        verification_code=request.verification_code
+    )
+
+    if result == "success":
+        try:
+            account_info = cl.account_info()
+            return {"status": "success", "message": "Logged in", "user": account_info.dict()}
+        except Exception:
+            return {"status": "success", "message": "Logged in (no info)", "user": {"email": request.email}}
+
+    if result == "challenge_required":
+        return {"status": "challenge", "message": "Instagram requested verification code. Please check your email/phone."}
+
+    raise HTTPException(status_code=401, detail=f"Login failed: {result}")
 
 
 @app.post("/scrape-batch")
