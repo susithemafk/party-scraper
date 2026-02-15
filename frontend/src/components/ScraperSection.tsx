@@ -1,4 +1,4 @@
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import { useScraper } from "../hooks/useScraper"
 import { ParserFunc, ScrapedItem } from "../types"
 
@@ -7,12 +7,27 @@ interface ScraperSectionProps {
     defaultUrl: string
     parserFunc: ParserFunc
     onResult?: (title: string, items: ScrapedItem[] | null) => void
+    onLoading?: (isLoading) => void
     onlyToday: boolean
     setOnlyToday: (val: boolean) => void
     trigger?: number
+    expandTrigger?: number
+    collapseTrigger?: number
 }
 
-export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUrl, parserFunc, onResult, onlyToday, setOnlyToday, trigger }) => {
+export const ScraperSection: React.FC<ScraperSectionProps> = ({
+    title,
+    defaultUrl,
+    parserFunc,
+    onResult,
+    onLoading,
+    onlyToday,
+    setOnlyToday,
+    trigger,
+    expandTrigger,
+    collapseTrigger
+}) => {
+    const [isOpen, setIsOpen] = useState(false)
     const {
         url,
         setUrl,
@@ -30,6 +45,15 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUr
         handleCopy,
     } = useScraper(parserFunc, defaultUrl, onlyToday, setOnlyToday)
 
+    // Automatically open if loading starts or if results are found
+    // useEffect(() => {
+        // if (loading) setIsOpen(true)
+    // }, [loading])
+
+    // useEffect(() => {
+    //     if (result && result.length > 0) setIsOpen(true)
+    // }, [result])
+
     // Trigger fetch when trigger prop changes (e.g., from App.tsx "FETCH ALL")
     useEffect(() => {
         if (trigger && trigger > 0) {
@@ -43,13 +67,51 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUr
         }
     }, [result, onResult, title])
 
+    useEffect(() => {
+        if (onLoading) {
+            onLoading(loading)
+        }
+    }, [loading, onLoading])
+
     const isEmpty = result !== null && result.length === 0 && !loading
 
-    return (
-        <div className={`scraper-section ${isEmpty ? "empty-result" : ""}`}>
-            <h2 className="section-title">{title}</h2>
+    useEffect(() => {
+        if (expandTrigger && expandTrigger > 0) setIsOpen(true)
+    }, [expandTrigger])
 
-            <div className="input-group">
+    useEffect(() => {
+        if (collapseTrigger && collapseTrigger > 0) setIsOpen(false)
+    }, [collapseTrigger])
+
+    return (
+        <div className={`scraper-section ${isEmpty ? "empty-result" : ""} ${loading ? "is-loading" : ""} ${isOpen ? "is-open" : "is-collapsed"}`}>
+            <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <i className={`bi bi-chevron-${isOpen ? "down" : "right"}`} style={{ color: "var(--primary)", fontSize: "0.8rem" }}></i>
+                    <h2 className="section-title" style={{ marginBottom: 0, border: "none" }}>{title}</h2>
+                    {result && result.length > 0 && <span className="venue-count-badge">{result.length}</span>}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                    {loading && (
+                        <div className="venue-loading-tag">
+                            <span className="dot-pulse"></span>
+                            FETCHING...
+                        </div>
+                    )}
+                    {result && !loading && (
+                        <div className="venue-status-tag" style={{ color: result.length > 0 ? "var(--success)" : "#ef4444" }}>
+                            {result.length > 0 ? "DONE" : "NO EVENTS"}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {isOpen && (
+                <div className="input-group" style={{ marginTop: "1.5rem", animation: "slideDown 0.2s ease-out" }}>
                 <div className="field-label">AUTOMATIC URL:</div>
                 <div style={{ display: "flex", gap: "1rem", marginBottom: "0.8rem" }}>
                     <input type="text" placeholder="Enter website URL..." value={url} onChange={(e) => setUrl(e.target.value)} />
@@ -87,17 +149,30 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUr
                         Parse Manual HTML
                     </button>
                 </div>
-            </div>
+                </div>
+            )}
 
-            {result && (
-                <div className="results-section">
-                    <div className="field-label result">
-                        RESULT ARRAY: {result.length}
-                        <button className="copy-btn" onClick={handleCopy} style={{ background: copied ? "var(--success)" : "" }}>
-                            {copied ? "Copied!" : "Copy to Clipboard"}
+            {result && result.length > 0 && (
+                <div className="results-section" style={{ marginTop: "1.5rem" }}>
+                    <div className="field-label result" style={{ marginBottom: "1rem" }}>
+                        FOUND EVENTS: {result.length}
+                        <button className="copy-btn" onClick={handleCopy} style={{ background: copied ? "var(--success)" : "rgba(255,255,255,0.05)", fontSize: "0.7rem", padding: "4px 10px" }}>
+                            {copied ? "Copied JSON!" : "Copy JSON"}
                         </button>
                     </div>
-                    <textarea readOnly value={JSON.stringify(result, null, 4)} />
+
+                    <div className="scraped-items-list">
+                        {result.map((item, idx) => (
+                            <div key={idx} className="scraped-item">
+                                <div className="item-date">{item.date || "No date"}</div>
+                                <div className="item-url">
+                                    <a href={item.url} target="_blank" rel="noopener noreferrer">
+                                        {item.url}
+                                    </a>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>

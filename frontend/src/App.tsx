@@ -15,20 +15,23 @@ import { bobyhallParser } from "./parsers/bobyhall"
 import { ScrapedItem } from "./types"
 
 const VENUES = [
-    // { title: "Bobyhall", url: "https://bobyhall.cz/program-bobyhall/", parser: bobyhallParser },
-    // { title: "Fraktal", url: "https://ra.co/clubs/224489", parser: raParser },
-    // { title: "Metro Music Bar", url: "https://www.metromusic.cz/program/", parser: metroParser },
+    { title: "Bobyhall", url: "https://bobyhall.cz/program-bobyhall/", parser: bobyhallParser },
+    { title: "Fraktal", url: "https://ra.co/clubs/224489", parser: raParser },
+    { title: "Metro Music Bar", url: "https://www.metromusic.cz/program/", parser: metroParser },
     { title: "První patro", url: "https://patrobrno.cz/", parser: patroParser },
-    // { title: "Perpetuum", url: "https://www.perpetuumklub.cz/program/", parser: perpetuumParser },
-    // { title: "Fléda", url: "https://www.fleda.cz/program/", parser: fledaParser },
-    // { title: "Sono Music Club", url: "https://www.sono.cz/program/", parser: sonoParser },
-    // { title: "Kabinet Múz", url: "https://www.kabinetmuz.cz/program", parser: kabinetParser },
-    // { title: "Artbar", url: "https://www.artbar.club/shows", parser: artbarParser },
+    { title: "Perpetuum", url: "https://www.perpetuumklub.cz/program/", parser: perpetuumParser },
+    { title: "Fléda", url: "https://www.fleda.cz/program/", parser: fledaParser },
+    { title: "Sono Music Club", url: "https://www.sono.cz/program/", parser: sonoParser },
+    { title: "Kabinet Múz", url: "https://www.kabinetmuz.cz/program", parser: kabinetParser },
+    { title: "Artbar", url: "https://www.artbar.club/shows", parser: artbarParser },
 ]
 
 const App: React.FC = () => {
     const [triggerAll, setTriggerAll] = useState(0)
+    const [expandAllCounter, setExpandAllCounter] = useState(0)
+    const [collapseAllCounter, setCollapseAllCounter] = useState(0)
     const [allResults, setAllResults] = useState<Record<string, ScrapedItem[]>>({})
+    const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({})
     const [aiResults, setAiResults] = useState<Record<string, any[]>>({})
     const [copiedAll, setCopiedAll] = useState(false)
     const [globalOnlyToday, setGlobalOnlyToday] = useState(true)
@@ -37,6 +40,10 @@ const App: React.FC = () => {
     const handleFetchAll = useCallback(() => {
         setAllResults({})
         setTriggerAll((prev) => prev + 1)
+    }, [])
+
+    const handleLoading = useCallback((title: string, isLoading: boolean) => {
+        setLoadingStates((prev) => ({ ...prev, [title]: isLoading }))
     }, [])
 
     const handleResult = useCallback((title: string, items: ScrapedItem[] | null) => {
@@ -92,6 +99,8 @@ const App: React.FC = () => {
     }, [allResults])
 
     const hasAiResults = Object.keys(aiResults).length > 0
+    const activeScrapersCount = Object.values(loadingStates).filter(Boolean).length
+    const isAnyLoading = activeScrapersCount > 0
 
     return (
         <div className="container">
@@ -130,11 +139,34 @@ const App: React.FC = () => {
 
                 <div
                     className="bulk-controls"
-                    style={{ marginBottom: "2rem", display: "flex", gap: "1rem", justifyContent: "center", alignItems: "center" }}
+                    style={{ marginBottom: "2rem", display: "flex", flexWrap: "wrap", gap: "1rem", justifyContent: "center", alignItems: "center" }}
                 >
-                    <button onClick={handleFetchAll} className="fetch-all-btn">
-                        FETCH ALL SCRAPERS ({VENUES.length})
-                    </button>
+                    <div style={{ position: "relative" }}>
+                        <button onClick={handleFetchAll} className="fetch-all-btn" disabled={isAnyLoading}>
+                            {isAnyLoading ? `FETCHING... (${activeScrapersCount}/${VENUES.length})` : `FETCH ALL SCRAPERS (${VENUES.length})`}
+                        </button>
+                        {isAnyLoading && (
+                            <div className="fetching-loader-bar"></div>
+                        )}
+                    </div>
+
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <button
+                            className="secondary-button"
+                            style={{ padding: "0.5rem 1rem", fontSize: "0.8rem" }}
+                            onClick={() => setExpandAllCounter(prev => prev + 1)}
+                        >
+                            <i className="bi bi-arrows-expand"></i> OPEN ALL
+                        </button>
+                        <button
+                            className="secondary-button"
+                            style={{ padding: "0.5rem 1rem", fontSize: "0.8rem" }}
+                            onClick={() => setCollapseAllCounter(prev => prev + 1)}
+                        >
+                            <i className="bi bi-arrows-collapse"></i> CLOSE ALL
+                        </button>
+                    </div>
+
                     <label
                         className="global-filter"
                         style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.9rem", color: "var(--text-muted)" }}
@@ -166,9 +198,12 @@ const App: React.FC = () => {
                             defaultUrl={venue.url}
                             parserFunc={venue.parser}
                             onResult={handleResult}
+                            onLoading={(isLoading) => handleLoading(venue.title, isLoading)}
                             onlyToday={globalOnlyToday}
                             setOnlyToday={setGlobalOnlyToday}
                             trigger={triggerAll}
+                            expandTrigger={expandAllCounter}
+                            collapseTrigger={collapseAllCounter}
                         />
                     ))}
                 </div>
