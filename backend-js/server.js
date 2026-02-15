@@ -83,6 +83,21 @@ app.post("/save-json", (req, res) => {
     }
 })
 
+app.get("/load-output", (req, res) => {
+    const filePath = path.join(__dirname, "..", "output.json")
+
+    try {
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: "output.json not found" })
+        }
+        const content = fs.readFileSync(filePath, "utf-8")
+        res.json(JSON.parse(content))
+    } catch (error) {
+        console.error("Error reading output.json:", error)
+        res.status(500).json({ error: "Failed to read output.json" })
+    }
+})
+
 app.get("/health", (req, res) => res.json({ status: "ok" }))
 
 app.listen(port, () => {
