@@ -1,6 +1,6 @@
-import React, { useRef, useCallback, useState } from "react"
-import { toJpeg } from "html-to-image"
 import axios from "axios"
+import { toJpeg } from "html-to-image"
+import React, { useCallback, useRef, useState } from "react"
 import styles from "./InstagramGenerator.module.css"
 
 // --- Definice Typů ---
@@ -98,7 +98,7 @@ const InstagramPost: React.FC<PostProps> = ({ event }) => {
                             {event.time && <div className={styles.detailItem}>{event.time}</div>}
 
                             {/* Cena */}
-							{event.price && " | "}
+                            {event.price && " | "}
                             {event.price && <div className={styles.detailItem}>{event.price}</div>}
                         </div>
                     </div>

@@ -115,6 +115,28 @@ const App: React.FC = () => {
 
     return (
         <div className="container">
+            <button
+                onClick={async () => {
+                    const res = await axios.get("http://localhost:8000/")
+
+                    console.log(res)
+                }}
+            >
+                root call
+            </button>
+            <button
+                onClick={async () => {
+                    const res = await axios.post("http://localhost:8000/scrape", {
+                        date: "2026-02-14",
+                        url: "https://patrobrno.cz/events/expe-hory-prenasi-iii-ples-expedition-clubu/",
+                    })
+
+                    console.log(res)
+                }}
+            >
+                scrape call
+            </button>
+
             <div className="view-selector" style={{ display: "flex", gap: "1rem", justifyContent: "center", marginBottom: "2rem" }}>
                 <button
                     onClick={() => setView("scraper")}
@@ -124,7 +146,7 @@ const App: React.FC = () => {
                         border: "1px solid var(--primary)",
                         background: view === "scraper" ? "var(--primary)" : "transparent",
                         color: "white",
-                        cursor: "pointer"
+                        cursor: "pointer",
                     }}
                 >
                     Scraper Dashboard
@@ -137,7 +159,7 @@ const App: React.FC = () => {
                         border: "1px solid var(--primary)",
                         background: view === "instagram" ? "var(--primary)" : "transparent",
                         color: "white",
-                        cursor: "pointer"
+                        cursor: "pointer",
                     }}
                 >
                     Instagram Generator
@@ -151,11 +173,17 @@ const App: React.FC = () => {
                     <h1>Party Scraper</h1>
                     <p className="subtitle">Automated Event Intelligence</p>
 
-                    <div className="bulk-controls" style={{ marginBottom: "2rem", display: "flex", gap: "1rem", justifyContent: "center", alignItems: "center" }}>
+                    <div
+                        className="bulk-controls"
+                        style={{ marginBottom: "2rem", display: "flex", gap: "1rem", justifyContent: "center", alignItems: "center" }}
+                    >
                         <button onClick={handleFetchAll} className="fetch-all-btn">
                             FETCH ALL SCRAPERS ({VENUES.length})
                         </button>
-                        <label className="global-filter" style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.9rem", color: "var(--text-muted)" }}>
+                        <label
+                            className="global-filter"
+                            style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.9rem", color: "var(--text-muted)" }}
+                        >
                             <input
                                 type="checkbox"
                                 checked={globalOnlyToday}
@@ -166,11 +194,7 @@ const App: React.FC = () => {
                         </label>
                         {aggregatedResults.length > 0 && (
                             <div style={{ display: "flex", gap: "1rem" }}>
-                                <button
-                                    onClick={handleCopyAll}
-                                    className="copy-btn"
-                                    style={{ background: copiedAll ? "var(--success)" : "var(--primary)" }}
-                                >
+                                <button onClick={handleCopyAll} className="copy-btn" style={{ background: copiedAll ? "var(--success)" : "var(--primary)" }}>
                                     {copiedAll ? "Copied All (JSON)!" : `Copy All (${aggregatedResults.length})`}
                                 </button>
                                 <button
@@ -179,7 +203,7 @@ const App: React.FC = () => {
                                     style={{
                                         background: savedAll ? "var(--success)" : "transparent",
                                         border: "1px solid var(--primary)",
-                                        color: "var(--text)"
+                                        color: "var(--text)",
                                     }}
                                 >
                                     {savedAll ? "Saved to input.json!" : "Save input.json"}
