@@ -1,66 +1,83 @@
 import React, { useState } from "react"
-import axios from "axios"
-import { ScrapedItem, ProcessedResult } from "../types"
+import { ScrapedItem } from "../types"
 
 interface AiProcessorProps {
-    inputData?: ScrapedItem[]
+    inputData?: (ScrapedItem & { venue?: string })[]
+    onComplete?: (results: Record<string, any[]>) => void
 }
 
-export const AiProcessor: React.FC<AiProcessorProps> = ({ inputData = [] }) => {
-    const [results, setResults] = useState<ProcessedResult[]>([])
+export const AiProcessor: React.FC<AiProcessorProps> = ({ inputData = [], onComplete }) => {
+    const [results, setResults] = useState<Record<string, any[]>>({}) // Dictionary format
     const [loading, setLoading] = useState<boolean>(false)
     const [progress, setProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
     const [copied, setCopied] = useState<boolean>(false)
-
-    const testApi = async () => {
-        try {
-            const response = await axios.get("http://localhost:8000/health")
-            console.log("API Test Response:", response.data)
-        } catch (err) {
-            console.error("API Test Error:", err)
-        }
-    }
-
-    const testScrape = async () => {
-        try {
-            const response = await axios.post("http://localhost:8000/scrape", {
-                date: "2026-02-14",
-                url: "https://www.artbar.club/events/cze-vs-sui",
-            })
-            console.log("Test Scrape Response:", response.data)
-        } catch (err) {
-            console.error("Test Scrape Error:", err)
-        }
-    }
 
     const handleProcessAi = async () => {
         if (!inputData || inputData.length === 0) return
 
         setLoading(true)
-        setResults([])
+        setResults({}) // Clear as dictionary
         setProgress({ current: 0, total: inputData.length })
 
-        const processedResults: ProcessedResult[] = []
+        // Group inputData back to { Venue: [events] } for the backend
+        const batchData: Record<string, { url: string; date: string | null }[]> = {}
+        inputData.forEach(item => {
+            const venue = item.venue || "Other"
+            if (!batchData[venue]) batchData[venue] = []
+            batchData[venue].push({ url: item.url, date: item.date })
+        })
 
-        for (let i = 0; i < inputData.length; i++) {
-            const item = inputData[i]
-            setProgress((p) => ({ ...p, current: i + 1 }))
+        let itemsCount = 0
+        const currentResults: Record<string, any[]> = {}
 
-            try {
-                const response = await axios.post("http://localhost:8000/scrape", {
-                    url: item.url,
-                    date: item.date,
-                })
-                processedResults.push(response.data)
-                setResults([...processedResults])
-            } catch (err: any) {
-                console.error(`Failed to process ${item.url}:`, err)
-                processedResults.push({ url: item.url, error: "Failed to extract" })
-                setResults([...processedResults])
+        try {
+            const response = await fetch("http://localhost:8000/scrape-batch-stream", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(batchData),
+            })
+
+            if (!response.body) throw new Error("No response body")
+
+            const reader = response.body.getReader()
+            const decoder = new TextDecoder()
+            let buffer = ""
+
+            while (true) {
+                const { value, done } = await reader.read()
+                if (done) break
+
+                buffer += decoder.decode(value, { stream: true })
+                const lines = buffer.split("\n")
+                buffer = lines.pop() || ""
+
+                for (const line of lines) {
+                    if (!line.trim()) continue
+                    try {
+                        const chunk = JSON.parse(line) // Format: { "Venue": [event] }
+                        const venueName = Object.keys(chunk)[0]
+                        const eventData = chunk[venueName][0]
+
+                        if (!currentResults[venueName]) currentResults[venueName] = []
+                        currentResults[venueName].push(eventData)
+
+                        setResults({ ...currentResults })
+                        itemsCount++
+                        setProgress(p => ({ ...p, current: itemsCount }))
+                    } catch (e) {
+                        console.error("Failed to parse stream line:", e)
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Streaming failed:", err)
+            alert("Extraction failed. Check if the backend is running.")
+        } finally {
+            setLoading(false)
+            if (onComplete && Object.keys(currentResults).length > 0) {
+                onComplete(currentResults)
             }
         }
-
-        setLoading(false)
     }
 
     const handleCopy = () => {
@@ -70,60 +87,93 @@ export const AiProcessor: React.FC<AiProcessorProps> = ({ inputData = [] }) => {
         })
     }
 
-    return (
-        <div className="scraper-section ai-processor">
-            <button onClick={testApi} style={{ marginBottom: "1rem" }}>
-                Test API Connection
-            </button>
-            <button onClick={testScrape} style={{ marginBottom: "1rem", marginLeft: "1rem" }}>
-                Test Scrape Function
-            </button>
+    const flatResults = Object.values(results).flat()
 
-            <h2 className="section-title">AI Data Processor</h2>
+    return (
+        <div className="scraper-section ai-processor" style={{ border: "1px solid var(--primary)", background: "rgba(192, 132, 252, 0.05)" }}>
+            <h2 className="section-title">AI Content Processing</h2>
             <p className="description" style={{ color: "var(--text-muted)", marginBottom: "1rem" }}>
-                This section automatically collects events found by the fetchers above and uses Gemini AI to extract full details.
+                Send found URLs to the Gemini extraction engine.
             </p>
 
             <div className="input-group">
-                <div className="field-label">
-                    READY TO PROCESS: <span style={{ color: "#c084fc" }}>{inputData.length} items</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                    <div className="field-label">
+                        QUEUE: <span style={{ color: "#c084fc", fontWeight: "bold" }}>{inputData.length} events</span>
+                    </div>
+                    {flatResults.length > 0 && (
+                        <div style={{ fontSize: "0.8rem", color: "var(--success)" }}>
+                            PROCESSED: {flatResults.length}
+                        </div>
+                    )}
                 </div>
 
-                {inputData.length > 0 && (
-                    <div className="items-preview">
-                        {inputData.map((item, idx) => (
-                            <div key={idx} className="preview-row">
-                                {item.date} - {item.url}
-                            </div>
-                        ))}
+                {loading && (
+                    <div className="progress-bar-container" style={{ width: "100%", height: "8px", background: "rgba(255,255,255,0.1)", borderRadius: "4px", marginBottom: "1rem", overflow: "hidden" }}>
+                        <div
+                            className="progress-bar-fill"
+                            style={{
+                                width: `${(progress.current / progress.total) * 100}%`,
+                                height: "100%",
+                                background: "var(--primary)",
+                                transition: "width 0.3s ease"
+                            }}
+                        />
                     </div>
                 )}
 
                 <button
                     onClick={handleProcessAi}
                     disabled={loading || inputData.length === 0}
-                    style={{ background: "linear-gradient(135deg, #c084fc 0%, #a855f7 100%)", marginTop: "1rem" }}
+                    className="fetch-all-btn"
+                    style={{
+                        background: loading ? "var(--text-muted)" : "linear-gradient(135deg, #c084fc 0%, #a855f7 100%)",
+                        width: "100%",
+                        padding: "1rem"
+                    }}
                 >
                     {loading ? (
                         <>
-                            <span className="loader"></span>
-                            Processing {progress.current} / {progress.total}...
+                            ⚡ Extracting {progress.current} / {progress.total}...
                         </>
                     ) : (
-                        "Start AI Extraction"
+                        "🚀 START FULL AI EXTRACTION"
                     )}
                 </button>
             </div>
 
-            {results.length > 0 && (
+            {flatResults.length > 0 && (
                 <div className="results-section" style={{ marginTop: "2rem" }}>
-                    <div className="field-label result">
-                        PROCESSED RESULTS ({results.length}):
-                        <button className="copy-btn" onClick={handleCopy} style={{ background: copied ? "var(--success)" : "" }}>
-                            {copied ? "Copied!" : "Copy to Clipboard"}
+                    <div className="field-label result" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>LATEST RESULTS:</span>
+                        <button className="copy-btn" onClick={handleCopy} style={{ background: copied ? "var(--success)" : "rgba(255,255,255,0.1)", fontSize: "0.7rem", padding: "4px 8px" }}>
+                            {copied ? "Copied!" : "Copy JSON"}
                         </button>
                     </div>
-                    <textarea readOnly value={JSON.stringify(results, null, 4)} style={{ height: "300px" }} />
+
+                    <div className="results-grid" style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                        gap: "10px",
+                        maxHeight: "300px",
+                        overflowY: "auto",
+                        padding: "10px",
+                        background: "rgba(0,0,0,0.2)",
+                        borderRadius: "8px"
+                    }}>
+                        {flatResults.map((res: any, idx: number) => (
+                            <div key={idx} style={{
+                                padding: "8px",
+                                background: res.error ? "rgba(239, 68, 68, 0.1)" : "rgba(255,255,255,0.05)",
+                                border: res.error ? "1px solid #ef4444" : "1px solid rgba(255,255,255,0.1)",
+                                borderRadius: "4px",
+                                fontSize: "0.8rem"
+                            }}>
+                                <div style={{ fontWeight: "bold", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{res.title || "Processing..."}</div>
+                                <div style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>{res.date}</div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>

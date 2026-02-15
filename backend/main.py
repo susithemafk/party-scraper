@@ -1,12 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 import sys
 import os
 import asyncio
 import platform
 import logging
+import json
 
 # --- 1. KRITICKÁ ČÁST PRO WINDOWS ---
 # Musí to být úplně nahoře, dříve než se vytvoří jakákoliv async smyčka
@@ -18,7 +20,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Importy s lepším ošetřením chyb
 try:
-    from src.scraper import process_event
+    from src.scraper import process_event, process_batch
     from crawl4ai import AsyncWebCrawler
 except ImportError as e:
     print(f"FATAL: Import failed: {e}")
@@ -48,33 +50,67 @@ async def root():
 
 @app.post("/scrape")
 async def scrape_url(request: ScrapeRequest):
+    # ... ponecháno pro kompatibilitu ...
     print(f"Starting scrape: {request.url}")
-
-    # --- 3. FIX PRO CRAWL4AI UVNITŘ FASTAPI ---
-    # Crawl4AI/Playwright vyžadují čisté prostředí.
-    # Vytváříme crawler instance přímo v requestu, ale s ošetřením chyb.
     try:
         async with AsyncWebCrawler(verbose=True) as crawler:
-            # Důležité: timeout ošetři i zde, aby request nevisel věčně
             detail = await asyncio.wait_for(
                 process_event(crawler, request.url, request.date or ""),
-                timeout=60.0  # Max 60 sekund na jeden scrape
+                timeout=60.0
             )
-
             if not detail:
-                raise HTTPException(
-                    status_code=404, detail="Data extraction failed")
-
+                raise HTTPException(status_code=404, detail="Data extraction failed")
             return detail
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="Scraping timed out")
+
+@app.post("/scrape-batch")
+async def scrape_batch(request: dict):
+    """
+    Spustí hromadné zpracování pomocí jedné instance crawleru (process_batch).
+    """
+    print(f"Starting batch scrape for {len(request)} venues")
+    try:
+        results = await process_batch(request)
+        return results
     except Exception as e:
         import traceback
-        error_msg = traceback.format_exc()
-        print(f"SERVER ERROR:\n{error_msg}")
-        # Vrácením 500 zajistíme, že prohlížeč dostane odpověď a nevyhodí CORS error
+        print(f"BATCH ERROR:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/scrape-batch-stream")
+async def scrape_batch_stream(request: dict):
+    """
+    Groups events by venue. Streams result-by-result.
+    Format of chunk: { "VenueName": [event] }
+    """
+    async def event_generator():
+        async with AsyncWebCrawler(verbose=True) as crawler:
+            for venue, events in request.items():
+                for event in events:
+                    url = event.get("url")
+                    date = event.get("date")
+                    if not url:
+                        continue
+
+                    print(f"Processing stream item: {url}")
+                    try:
+                        detail = await asyncio.wait_for(
+                            process_event(crawler, url, date or ""),
+                            timeout=60.0
+                        )
+                        if detail:
+                            res = detail.model_dump()
+                            # Wrap in venue key for grouped format
+                            yield json.dumps({venue: [res]}) + "\n"
+                        else:
+                            yield json.dumps({venue: [{"url": url, "error": "Extraction failed"}]}) + "\n"
+                    except Exception as e:
+                        yield json.dumps({venue: [{"url": url, "error": str(e)}]}) + "\n"
+
+    return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
 
 @app.get("/health")

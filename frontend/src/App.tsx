@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useMemo } from "react"
-import axios from "axios"
 import "./App.css"
 import { ScraperSection } from "./components/ScraperSection"
 import { InstagramGeneratorPage } from "./components/InstagramGenerator"
@@ -30,9 +29,8 @@ const VENUES = [
 const App: React.FC = () => {
     const [triggerAll, setTriggerAll] = useState(0)
     const [allResults, setAllResults] = useState<Record<string, ScrapedItem[]>>({})
-    const [aiResults, setAiResults] = useState<any[]>([])
+    const [aiResults, setAiResults] = useState<Record<string, any[]>>({})
     const [copiedAll, setCopiedAll] = useState(false)
-    const [savedAll, setSavedAll] = useState(false)
     const [globalOnlyToday, setGlobalOnlyToday] = useState(true)
     const [view, setView] = useState<"scraper" | "instagram">("scraper")
 
@@ -93,29 +91,7 @@ const App: React.FC = () => {
         })
     }, [allResults])
 
-    const handleSaveInputFile = useCallback(async () => {
-        const output: Record<string, { date: string | null; url: string }[]> = {}
-
-        Object.entries(allResults).forEach(([venue, items]) => {
-            if (items && items.length > 0) {
-                output[venue] = items.map((item) => ({
-                    date: item.date,
-                    url: item.url,
-                }))
-            }
-        })
-
-        if (Object.keys(output).length === 0) return
-
-        try {
-            await axios.post("http://localhost:3001/save-json", output)
-            setSavedAll(true)
-            setTimeout(() => setSavedAll(false), 2000)
-        } catch (err) {
-            console.error("Save failed:", err)
-            alert("Failed to save input.json")
-        }
-    }, [allResults])
+    const hasAiResults = Object.keys(aiResults).length > 0
 
     return (
         <div className="container">
@@ -150,7 +126,7 @@ const App: React.FC = () => {
 
             {view === "instagram" ? (
                 // Use aiResults if available, otherwise fall back to raw allResults formatted as a record
-                <InstagramGeneratorPage data={aiResults.length > 0 ? { "AI Processed": aiResults } : allResults} />
+                <InstagramGeneratorPage data={hasAiResults ? aiResults : allResults} />
             ) : (
                 <>
                     <h1>Party Scraper</h1>

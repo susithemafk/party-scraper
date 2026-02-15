@@ -9,16 +9,10 @@ interface ScraperSectionProps {
     onResult?: (title: string, items: ScrapedItem[] | null) => void
     onlyToday: boolean
     setOnlyToday: (val: boolean) => void
+    trigger?: number
 }
 
-export const ScraperSection: React.FC<ScraperSectionProps> = ({
-    title,
-    defaultUrl,
-    parserFunc,
-    onResult,
-    onlyToday,
-    setOnlyToday
-}) => {
+export const ScraperSection: React.FC<ScraperSectionProps> = ({ title, defaultUrl, parserFunc, onResult, onlyToday, setOnlyToday, trigger }) => {
     const {
         url,
         setUrl,
@@ -35,6 +29,13 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({
         handleManualParse,
         handleCopy,
     } = useScraper(parserFunc, defaultUrl, onlyToday, setOnlyToday)
+
+    // Trigger fetch when trigger prop changes (e.g., from App.tsx "FETCH ALL")
+    useEffect(() => {
+        if (trigger && trigger > 0) {
+            handleFetchAndParse()
+        }
+    }, [trigger, handleFetchAndParse])
 
     useEffect(() => {
         if (onResult) {
@@ -73,11 +74,7 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({
                     </label>
                     <label>
                         <span>Max results:</span>
-                        <input
-                            type="number"
-                            value={maxResults}
-                            onChange={(e) => setMaxResults(parseInt(e.target.value) || 0)}
-                        />
+                        <input type="number" value={maxResults} onChange={(e) => setMaxResults(parseInt(e.target.value) || 0)} />
                     </label>
                 </div>
 
@@ -86,12 +83,7 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({
                         {loading && <span className="loader"></span>}
                         Fetch & Find
                     </button>
-                    <button
-                        onClick={handleManualParse}
-                        disabled={!htmlInput.trim()}
-                        className="secondary-button"
-                        style={{ flex: 1 }}
-                    >
+                    <button onClick={handleManualParse} disabled={!htmlInput.trim()} className="secondary-button" style={{ flex: 1 }}>
                         Parse Manual HTML
                     </button>
                 </div>
