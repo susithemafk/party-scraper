@@ -43,7 +43,14 @@ const App: React.FC = () => {
     }, [])
 
     const handleLoading = useCallback((title: string, isLoading: boolean) => {
-        setLoadingStates((prev) => ({ ...prev, [title]: isLoading }))
+        setLoadingStates((prev) => {
+            if (prev[title] === isLoading) return prev;
+            return { ...prev, [title]: isLoading };
+        });
+    }, [])
+
+    const handleAiComplete = useCallback((results: Record<string, any[]>) => {
+        setAiResults(results)
     }, [])
 
     const handleResult = useCallback((title: string, items: ScrapedItem[] | null) => {
@@ -189,7 +196,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="main-content">
-                    <AiProcessor inputData={aggregatedResults} onComplete={setAiResults} />
+                    <AiProcessor inputData={aggregatedResults} onComplete={handleAiComplete} />
 
                     {VENUES.map((venue) => (
                         <ScraperSection
