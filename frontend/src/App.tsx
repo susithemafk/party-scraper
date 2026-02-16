@@ -3,6 +3,7 @@ import "./App.css"
 import { ScraperSection } from "./components/ScraperSection"
 import { InstagramGeneratorPage } from "./components/InstagramGenerator"
 import { AiProcessor } from "./components/AiProcessor"
+import { InstagramLogin } from "./components/InstagramLogin"
 import { artbarParser } from "./parsers/artbar"
 import { kabinetParser } from "./parsers/kabinet"
 import { sonoParser } from "./parsers/sono"
@@ -43,7 +44,14 @@ const App: React.FC = () => {
     }, [])
 
     const handleLoading = useCallback((title: string, isLoading: boolean) => {
-        setLoadingStates((prev) => ({ ...prev, [title]: isLoading }))
+        setLoadingStates((prev) => {
+            if (prev[title] === isLoading) return prev;
+            return { ...prev, [title]: isLoading };
+        });
+    }, [])
+
+    const handleAiComplete = useCallback((results: Record<string, any[]>) => {
+        setAiResults(results)
     }, [])
 
     const handleResult = useCallback((title: string, items: ScrapedItem[] | null) => {
@@ -189,7 +197,8 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="main-content">
-                    <AiProcessor inputData={aggregatedResults} onComplete={setAiResults} />
+                    <InstagramLogin />
+                    <AiProcessor inputData={aggregatedResults} onComplete={handleAiComplete} />
 
                     {VENUES.map((venue) => (
                         <ScraperSection
