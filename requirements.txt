@@ -6,3 +6,5 @@ pytest
 pytest-asyncio
 fastapi
 uvicorn
+playwright 
+playwright-stealth
