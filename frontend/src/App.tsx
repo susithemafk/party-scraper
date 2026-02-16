@@ -3,7 +3,6 @@ import "./App.css"
 import { ScraperSection } from "./components/ScraperSection"
 import { InstagramGeneratorPage } from "./components/InstagramGenerator"
 import { AiProcessor } from "./components/AiProcessor"
-import { InstagramLogin } from "./components/InstagramLogin"
 import { artbarParser } from "./parsers/artbar"
 import { kabinetParser } from "./parsers/kabinet"
 import { sonoParser } from "./parsers/sono"
@@ -197,7 +196,6 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="main-content">
-                    <InstagramLogin />
                     <AiProcessor inputData={aggregatedResults} onComplete={handleAiComplete} />
 
                     {VENUES.map((venue) => (

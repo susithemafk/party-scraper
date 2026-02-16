@@ -6,9 +6,8 @@ pytest
 pytest-asyncio
 fastapi
 uvicorn
-playwright 
+playwright
 playwright-stealth
-instagrapi
 playwright
 aiofiles
 httpx
