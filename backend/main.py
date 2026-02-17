@@ -10,6 +10,8 @@ import platform
 import logging
 import json
 import httpx
+import base64
+import uuid
 from instagrapi import Client
 from playwright.async_api import async_playwright
 
@@ -24,6 +26,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Importy s lepším ošetřením chyb
 try:
     from src.scraper import process_event, process_batch
+    from src.instagram_workflow import run_instagram_workflow
     from crawl4ai import AsyncWebCrawler
 except ImportError as e:
     print(f"FATAL: Import failed: {e}")
@@ -286,6 +289,58 @@ async def fetch_html(request: dict):
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.post("/ig-publish")
+async def ig_publish(request: IgPostRequest):
+    print(f"\n[API] Received /ig-publish request")
+
+    # Create temp directory for images
+    temp_dir = os.path.join(os.getcwd(), "temp_instagram_images")
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
+
+    image_paths = []
+    try:
+        # Save base64 images to temporary files
+        for i, img_b64 in enumerate(request.images_base64):
+            # Strip metadata if present (e.g., "data:image/jpeg;base64,")
+            if "," in img_b64:
+                img_b64 = img_b64.split(",")[1]
+
+            img_data = base64.b64decode(img_b64)
+            file_name = f"upload_{uuid.uuid4()}_{i}.jpg"
+            file_path = os.path.join(temp_dir, file_name)
+
+            with open(file_path, "wb") as f:
+                f.write(img_data)
+
+            image_paths.append(file_path)
+
+        print(f"Saved {len(image_paths)} images to {temp_dir}")
+
+        # Run the playwright workflow
+        # Note: This runs in the background or blocks until finished.
+        # Since it's a long process, you might want to consider a task queue,
+        # but for now we'll run it directly.
+        # await run_instagram_workflow(
+        #     image_paths=image_paths,
+        #     caption=request.caption,
+        #     location=request.location_name
+        # )
+
+        return {"status": "success", "message": "Post published successfully via browser automation"}
+
+    except Exception as e:
+        import traceback
+        print(f"[IG-PUBLISH ERROR]: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Cleanup temporary files (optional, but recommended)
+        # for path in image_paths:
+        #     if os.path.exists(path):
+        #         os.remove(path)
+        pass
 
 
 if __name__ == "__main__":

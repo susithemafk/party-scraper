@@ -16,7 +16,7 @@ export const bobyhallParser: ParserFunc = (html) => {
 
         // Parts usually look like: [Title, Date, Time]
         // Example: "THE MUSIC OF THE WALL – IN CONCERT | 28.1.2027 | 17.00"
-        const title = parts[0]
+        // const title = parts[0]
         const rawDate = parts[1] // "28.1.2027"
 
         let dateStr: string | null = null

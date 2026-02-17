@@ -30,7 +30,7 @@ export const patroParser: ParserFunc = (html) => {
         if (!linkEl || !titleEl) return
 
         let url = linkEl.getAttribute("href") || ""
-        const title = titleEl.textContent?.trim() || ""
+        // const title = titleEl.textContent?.trim() || ""
 
         let dateStr: string | null = null
         if (dateEl) {

@@ -19,7 +19,7 @@ export const perpetuumParser: ParserFunc = (html) => {
             url = `https://www.perpetuumklub.cz${url.startsWith("/") ? "" : "/"}${url}`
         }
 
-        const title = titleEl.textContent?.trim() || ""
+        // const title = titleEl.textContent?.trim() || ""
 
         // Parse date like "So 14/02"
         let dateStr: string | null = null

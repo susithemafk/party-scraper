@@ -7,7 +7,7 @@ interface ScraperSectionProps {
     defaultUrl: string
     parserFunc: ParserFunc
     onResult?: (title: string, items: ScrapedItem[] | null) => void
-    onLoading?: (isLoading) => void
+    onLoading?: (isLoading: boolean) => void
     onlyToday: boolean
     setOnlyToday: (val: boolean) => void
     trigger?: number

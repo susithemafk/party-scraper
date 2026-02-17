@@ -8,6 +8,5 @@ fastapi
 uvicorn
 playwright
 playwright-stealth
-playwright
 aiofiles
 httpx
