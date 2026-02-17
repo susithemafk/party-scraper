@@ -13,6 +13,7 @@ env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
 just_open_the_browser = False
+headless = False
 
 
 
@@ -59,7 +60,7 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
     async with async_playwright() as p:
         # Launch browser in non-headless mode so you can see the action
         browser = await p.chromium.launch(
-            headless=False,
+            headless=headless,
             args=[
                 "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
@@ -107,6 +108,35 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
             print("Step 4: Clicking Log in...")
             login_button = page.get_by_text("Log in", exact=True)
             await human_click(page, login_button)
+
+            # step 4.5: handle "Continue" roadblock if it appears
+            try:
+                # Wait a few seconds for potential redirects or popups
+                await human_delay(2000, 4000)
+                continue_button = page.get_by_text("Continue", exact=True)
+
+                if await continue_button.is_visible():
+                    print("Step 4.5.1: 'Continue' button detected. Clicking it...")
+                    await human_click(page, continue_button)
+                    await human_delay(2000, 3000)
+
+                    # step 4.5.2: find password input and fill it
+                    print("Step 4.5.2: Re-filling password...")
+                    await human_type(page, 'input[name="pass"][type="password"]', INSTAGRAM_PASSWORD)
+                    await human_delay(1000, 2000)
+
+                    # step 4.5.3: click "Log in" again
+                    print("Step 4.5.3: Clicking Log in again...")
+                    # Try to find the button again as it might have changed
+                    re_login_button = page.get_by_role("button", name=re.compile(r"Log [iI]n", re.IGNORECASE))
+                    if not await re_login_button.is_visible():
+                        re_login_button = page.get_by_text("Log in", exact=True)
+
+                    await human_click(page, re_login_button)
+                    print("Log in attempt after Continue done.")
+                    await human_delay(3000, 5000)
+            except Exception as e:
+                print(f"Info: No 'Continue' check needed or failed: {e}")
 
             # step 5: click "Not now" for notifications if it appears
             print("Step 5: Handling post-login prompts...")

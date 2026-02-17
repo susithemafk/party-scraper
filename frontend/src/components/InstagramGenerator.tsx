@@ -62,7 +62,7 @@ const InstagramPost = React.memo<PostProps>(({ event, isSelected, onToggle, regi
                 const response = await fetch(proxyUrl, { signal: controller.signal })
 
                 if (!response.ok) {
-                    const text = await response.text();
+                    const text = await response.text()
                     throw new Error(`Status ${response.status}: ${text}`)
                 }
 
@@ -123,7 +123,14 @@ const InstagramPost = React.memo<PostProps>(({ event, isSelected, onToggle, regi
 
             setPublishStatus("Odesílám do prohlížeče...")
 
-            const caption = `Akce v Brně ${event.date} \n\n#brno #party #akcebrno #kamvbrne`
+            const formatDate = (dateString: string) => {
+                const date = new Date(dateString)
+                const day = String(date.getDate()).padStart(2, "0")
+                const month = String(date.getMonth() + 1).padStart(2, "0")
+                const year = date.getFullYear()
+                return `${day}. ${month}. ${year}`
+            }
+            const caption = `Akce v Brně ${formatDate(event.date)} \n\n#brno #party #akcebrno #kamvbrne`
 
             const response = await fetch("http://localhost:8000/ig-publish", {
                 method: "POST",
@@ -250,6 +257,7 @@ export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> =
     const [selectedIndices, setSelectedIndices] = useState<Set<string>>(new Set())
     const [isBatchPublishing, setIsBatchPublishing] = useState(false)
     const [batchStatus, setBatchStatus] = useState<string | null>(null)
+    const [hasInitializedSelection, setHasInitializedSelection] = useState(false)
     const postRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
     const allEvents = useMemo(() => {
@@ -275,6 +283,14 @@ export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> =
             )
             .filter((e) => e.title)
     }, [data])
+
+    // Auto-select all events when they are first loaded
+    useEffect(() => {
+        if (allEvents.length > 0 && !hasInitializedSelection) {
+            setSelectedIndices(new Set(allEvents.map((e) => e.id)))
+            setHasInitializedSelection(true)
+        }
+    }, [allEvents, hasInitializedSelection])
 
     const toggleSelection = useCallback((id: string) => {
         setSelectedIndices((prev) => {
