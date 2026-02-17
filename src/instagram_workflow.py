@@ -212,9 +212,6 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
 
             print("Workflow completed.")
 
-
-
-        input("Press Enter to close the browser...")
         await browser.close()
 
 

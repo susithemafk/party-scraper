@@ -34,7 +34,7 @@ export const raParser: ParserFunc = (html) => {
             url = `https://ra.co${url}`
         }
 
-        const title = titleEl.textContent?.trim() || ""
+        // const title = titleEl.textContent?.trim() || ""
 
         let dateStr: string | null = null
         if (dateEl) {

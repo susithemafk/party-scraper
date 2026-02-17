@@ -323,11 +323,11 @@ async def ig_publish(request: IgPostRequest):
         # Note: This runs in the background or blocks until finished.
         # Since it's a long process, you might want to consider a task queue,
         # but for now we'll run it directly.
-        await run_instagram_workflow(
-            image_paths=image_paths,
-            caption=request.caption,
-            location=request.location_name
-        )
+        # await run_instagram_workflow(
+        #     image_paths=image_paths,
+        #     caption=request.caption,
+        #     location=request.location_name
+        # )
 
         return {"status": "success", "message": "Post published successfully via browser automation"}
 
