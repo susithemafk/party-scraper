@@ -152,19 +152,65 @@ async def run_instagram_workflow():
                     file_chooser = await fc_info.value
                     await file_chooser.set_files(image_to_upload)
                     print("File successfully uploaded.")
-                    await human_delay(2000, 4000)
+                    await human_delay(3000, 5000)
             except Exception as e:
                 print(f"Upload failed: {e}")
 
-            # step 9: find div with role="button" and text "Next" and click it
-            # step 10: find div with role="button" and text "Next" and click it (second time after a few seconds)
-            # step 11: find a div with role="textbox" and click it (trigger focus)
-            # step 12: type description
-            # step 13: find a input with placeholder="Add location" and click it and write "Brno, Czech Republic"
-            # step 11: find a div with role="button" and text "Share" and click it
+            # step 9 & 10: Navigate through editing screens
+            print("Step 9 & 10: Clicking through 'Next' buttons...")
+            try:
+                # First Next (Image adjustments)
+                next_button = page.get_by_role("button", name=re.compile(r"Next|Další", re.IGNORECASE))
+                await human_click(page, next_button)
+                await human_delay(1500, 2500)
 
-            print("Workflow completed up to upload. Waiting to see outcome...")
+                # Second Next (Filters)
+                await human_click(page, next_button)
+                await human_delay(2000, 4000)
+            except Exception as e:
+                print(f"Could not navigate through 'Next' steps: {e}")
+
+            # step 11 & 12: Add caption
+            print("Step 11 & 12: Adding caption...")
+            try:
+                # The caption box is a div with role="textbox"
+                caption_box = page.get_by_role("textbox", name=re.compile(r"Write a caption|Napište popisek", re.IGNORECASE))
+                if not await caption_box.is_visible():
+                    caption_box = page.locator('div[role="textbox"]')
+
+                await human_click(page, caption_box)
+                await human_type(page, 'div[role="textbox"]', "Testing automated post from Brno! \ud83c\udde8\ud83c\uddff #brno #party")
+                await human_delay(1000, 2000)
+            except Exception as e:
+                print(f"Error adding caption: {e}")
+
+            # step 13: Add location
+            print("Step 13: Adding location...")
+            try:
+                location_input = page.get_by_placeholder(re.compile(r"Add location|Přidat lokalitu", re.IGNORECASE))
+                await human_click(page, location_input)
+                await human_type(page, 'input[placeholder="Add location"], input[placeholder="Přidat lokalitu"]', "Brno, Czech Republic")
+                # Click the first suggestion that matches our search
+                # suggestion = page.locator('div[role="button"]').filter(has_text="Brno, Czech Republic").first
+                # await human_click(page, suggestion)
+                print("Location selected.")
+                await human_delay(1000, 2000)
+            except Exception as e:
+                print(f"Could not add location: {e}")
+
+            # step 14: Final Share
+            print("Step 14: Clicking 'Share' button...")
+            try:
+                share_button = page.get_by_role("button", name=re.compile(r"Share|Sdílet", re.IGNORECASE))
+                await human_click(page, share_button)
+                print("Post shared successfully!")
+            except Exception as e:
+                print(f"Could not find Share button: {e}")
+
+
+            print("Workflow completed. Review the browser before it closes.")
             await human_delay(5000, 8000)
+
 
         input("Press Enter to close the browser...")
         await browser.close()
