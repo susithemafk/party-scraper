@@ -6,6 +6,7 @@ from playwright.async_api import async_playwright, Page
 from playwright_stealth import Stealth
 from dotenv import load_dotenv
 from pathlib import Path
+from typing import List, Optional
 
 # Load environment variables from .env in the project root
 env_path = Path(__file__).parent.parent / '.env'
@@ -50,7 +51,7 @@ async def human_click(page: Page, selector_or_locator):
     else:
         await locator.click()
 
-async def run_instagram_workflow():
+async def run_instagram_workflow(image_paths: Optional[List[str]] = None, caption: Optional[str] = None, location: Optional[str] = None):
     # Use environment variables for credentials
     INSTAGRAM_EMAIL = os.getenv("INSTAGRAM_EMAIL", "your_username")
     INSTAGRAM_PASSWORD = os.getenv("INSTAGRAM_PASSWORD", "your_password")
@@ -129,20 +130,22 @@ async def run_instagram_workflow():
                 print(f"Could not find 'New post' button: {e}")
 
             # step 7 & 8: upload file using FileChooser
-            print("Step 7 & 8: Uploading file from 'instagram_images' folder...")
+            print("Step 7 & 8: Uploading images...")
             try:
-                # Find an image to upload from instagram_images
-                img_dir = Path(__file__).parent.parent / "instagram_images"
-                extensions = ["*.jpg", "*.jpeg", "*.png", "*.avif", "*.heic", "*.heif"]
-                images = []
-                for ext in extensions:
-                    images.extend(img_dir.glob(ext))
+                if not image_paths:
+                    # Fallback to local images if none provided
+                    img_dir = Path(__file__).parent.parent / "instagram_images"
+                    extensions = ["*.jpg", "*.jpeg", "*.png", "*.avif", "*.heic", "*.heif"]
+                    images = []
+                    for ext in extensions:
+                        images.extend(img_dir.glob(ext))
+                    if images:
+                        image_paths = [str(images[0].absolute())]
 
-                if not images:
-                    print(f"ERROR: No images found in {img_dir}. Please place an image there.")
+                if not image_paths:
+                    print(f"ERROR: No images provided for upload.")
                 else:
-                    image_to_upload = str(images[0].absolute())
-                    print(f"Selected file: {image_to_upload}")
+                    print(f"Files to upload: {image_paths}")
 
                     # Start waiting for the file chooser before clicking the select button
                     async with page.expect_file_chooser() as fc_info:
@@ -150,7 +153,7 @@ async def run_instagram_workflow():
                         await page.get_by_role("button", name=re.compile(r"Select from computer|Vybrat z počítače", re.IGNORECASE)).click()
 
                     file_chooser = await fc_info.value
-                    await file_chooser.set_files(image_to_upload)
+                    await file_chooser.set_files(image_paths)
                     print("File successfully uploaded.")
                     await human_delay(3000, 5000)
             except Exception as e:
@@ -173,30 +176,29 @@ async def run_instagram_workflow():
             # step 11 & 12: Add caption
             print("Step 11 & 12: Adding caption...")
             try:
+                final_caption = caption or "Testing automated post from Brno! \ud83c\udde8\ud83c\uddff #brno #party"
                 # The caption box is a div with role="textbox"
                 caption_box = page.get_by_role("textbox", name=re.compile(r"Write a caption|Napište popisek", re.IGNORECASE))
                 if not await caption_box.is_visible():
                     caption_box = page.locator('div[role="textbox"]')
 
                 await human_click(page, caption_box)
-                await human_type(page, 'div[role="textbox"]', "Testing automated post from Brno! \ud83c\udde8\ud83c\uddff #brno #party")
+                await human_type(page, 'div[role="textbox"]', final_caption)
                 await human_delay(1000, 2000)
             except Exception as e:
                 print(f"Error adding caption: {e}")
 
             # step 13: Add location
-            print("Step 13: Adding location...")
-            try:
-                location_input = page.get_by_placeholder(re.compile(r"Add location|Přidat lokalitu", re.IGNORECASE))
-                await human_click(page, location_input)
-                await human_type(page, 'input[placeholder="Add location"], input[placeholder="Přidat lokalitu"]', "Brno, Czech Republic")
-                # Click the first suggestion that matches our search
-                # suggestion = page.locator('div[role="button"]').filter(has_text="Brno, Czech Republic").first
-                # await human_click(page, suggestion)
-                print("Location selected.")
-                await human_delay(1000, 2000)
-            except Exception as e:
-                print(f"Could not add location: {e}")
+            if location:
+                print(f"Step 13: Adding location: {location}...")
+                try:
+                    location_input = page.get_by_placeholder(re.compile(r"Add location|Přidat lokalitu", re.IGNORECASE))
+                    await human_click(page, location_input)
+                    await human_type(page, 'input[placeholder="Add location"], input[placeholder="Přidat lokalitu"]', location)
+                    print("Location selected.")
+                    await human_delay(1000, 2000)
+                except Exception as e:
+                    print(f"Could not add location: {e}")
 
             # step 14: Final Share
             print("Step 14: Clicking 'Share' button...")
@@ -204,12 +206,12 @@ async def run_instagram_workflow():
                 share_button = page.get_by_role("button", name=re.compile(r"Share|Sdílet", re.IGNORECASE))
                 await human_click(page, share_button)
                 print("Post shared successfully!")
+                await human_delay(5000, 8000)
             except Exception as e:
                 print(f"Could not find Share button: {e}")
 
+            print("Workflow completed.")
 
-            print("Workflow completed. Review the browser before it closes.")
-            await human_delay(5000, 8000)
 
 
         input("Press Enter to close the browser...")

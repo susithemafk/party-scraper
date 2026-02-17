@@ -1,6 +1,58 @@
 .postContainer {
     margin-bottom: 60px;
     text-align: center;
+    position: relative;
+    padding: 20px;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.postContainer.selected {
+    background: rgba(225, 48, 108, 0.1);
+    border-color: #e1306c;
+}
+
+.selectionOverlay {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 10;
+}
+
+.checkbox {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    accent-color: #e1306c;
+}
+
+.batchActions {
+    position: sticky;
+    top: 20px;
+    z-index: 100;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(8px);
+    padding: 15px 30px;
+    border-radius: 50px;
+    margin: 0 auto 40px auto;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    width: fit-content;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.selectionInfo {
+    font-weight: 600;
+    color: #e1306c;
+}
+
+.batchStatus {
+    font-size: 14px;
+    color: #64748b;
+    font-style: italic;
 }
 
 .previewScale {
@@ -209,4 +261,31 @@
 
 .clearBtn:hover {
     background: rgba(239, 68, 68, 0.1);
+}
+
+.buttonGroup {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.publishBtn {
+    background: #e1306c !important; /* Instagram pink */
+}
+
+.publishBtn:hover {
+    background: #c13584 !important;
+}
+
+.publishBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.statusIndicator {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #64748b;
+    font-style: italic;
 }
