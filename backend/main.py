@@ -336,11 +336,14 @@ async def ig_publish(request: IgPostRequest):
         print(f"[IG-PUBLISH ERROR]: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        # Cleanup temporary files (optional, but recommended)
-        # for path in image_paths:
-        #     if os.path.exists(path):
-        #         os.remove(path)
-        pass
+        # Cleanup temporary files
+        for path in image_paths:
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+                    print(f"Cleaned up: {path}")
+            except Exception as e:
+                print(f"Error cleaning up {path}: {e}")
 
 
 if __name__ == "__main__":
