@@ -2,6 +2,16 @@ import { toJpeg } from "html-to-image"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import styles from "./InstagramGenerator.module.css"
 
+const formatDate = (dateStr: string) => {
+    if (!dateStr) return ""
+    const parts = dateStr.split("-")
+    if (parts.length === 3) {
+        const [year, month, day] = parts
+        return `${day}. ${month}. ${year}`
+    }
+    return dateStr
+}
+
 // --- Definice Typů ---
 interface EventDetail {
     id?: string // Unikátní identifikátor pro potřeby renderování a cache
@@ -21,6 +31,122 @@ interface PostProps {
     onToggle: () => void
     registerRef: (el: HTMLDivElement | null) => void
 }
+
+// --- Komponenta pro úvodní post ---
+const InstagramTitlePost = React.memo<{
+    id: string
+    imageUrl: string | null
+    venues: string
+    isSelected: boolean
+    onToggle: () => void
+    onRefresh: () => void
+    registerRef: (el: HTMLDivElement | null) => void
+}>(({ id, imageUrl, venues, isSelected, onToggle, onRefresh, registerRef }) => {
+    const localRef = useRef<HTMLDivElement | null>(null)
+    const [imageDataUrl, setImageDataUrl] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (!imageUrl) {
+            setImageDataUrl(null)
+            return
+        }
+
+        setImageDataUrl(null) // Reset while loading new image
+        const controller = new AbortController()
+        const fetchImage = async () => {
+            try {
+                const proxyUrl = `http://localhost:8000/proxy-image?url=${encodeURIComponent(imageUrl)}&cb=${Date.now()}`
+                const response = await fetch(proxyUrl, { signal: controller.signal })
+                if (!response.ok) return
+                const blob = await response.blob()
+                const reader = new FileReader()
+                reader.onloadend = () => setImageDataUrl(reader.result as string)
+                reader.readAsDataURL(blob)
+            } catch (err) {
+                console.error("[Title Refresh] Failed to fetch image:", err)
+            }
+        }
+        fetchImage()
+        return () => controller.abort()
+    }, [imageUrl])
+
+    const handleRef = useCallback(
+        (el: HTMLDivElement | null) => {
+            localRef.current = el
+            registerRef(el)
+        },
+        [registerRef],
+    )
+
+    const formattedDate = useMemo(() => {
+        const d = new Date()
+        return `${String(d.getDate()).padStart(2, "0")}. ${String(d.getMonth() + 1).padStart(2, "0")}.`
+    }, [])
+
+    return (
+        <div className={`${styles.postContainer} ${isSelected ? styles.selected : ""}`}>
+            <div className={styles.selectionOverlay}>
+                <input type="checkbox" checked={isSelected} onChange={onToggle} className={styles.checkbox} />
+            </div>
+
+            <div className={styles.previewScale}>
+                <div ref={handleRef} className={styles.exportCanvas} data-event-id={id}>
+                    {imageDataUrl ? (
+                        <img src={imageDataUrl} className={styles.backgroundImage} crossOrigin="anonymous" alt="Title BG" />
+                    ) : (
+                        <div className={styles.fallbackBackground} />
+                    )}
+                    <div
+                        className={styles.gradientOverlay}
+                        style={{ height: "100%", background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 100%)" }}
+                    />
+                    <div
+                        className={styles.textContent}
+                        style={{
+                            height: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            textAlign: "center",
+                            padding: "0 80px",
+                        }}
+                    >
+                        <h1 className={styles.actionTitle} style={{ fontSize: "120px", marginBottom: "40px", WebkitLineClamp: "unset" }}>
+                            AKCE V BRNĚ
+                        </h1>
+                        <div style={{ width: "200px", height: "12px", background: "#306be1", marginBottom: "40px" }} />
+                        <h2 className={styles.actionTitle} style={{ fontSize: "100px", opacity: 0.9 }}>
+                            {formattedDate}
+                        </h2>
+                        {venues && (
+                            <div
+                                style={{
+                                    fontSize: "32px",
+                                    fontWeight: "800",
+                                    marginTop: "40px",
+                                    textTransform: "uppercase",
+                                    letterSpacing: "4px",
+                                    opacity: 0.8,
+                                    borderTop: "2px solid rgba(255, 255, 255, 0.8)",
+                                    paddingTop: "20px",
+                                }}
+                            >
+                                {venues}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className={styles.buttonGroup}>
+                <button onClick={onRefresh} className={styles.downloadBtn}>
+                    Změnit pozadí
+                </button>
+            </div>
+        </div>
+    )
+})
 
 // --- Komponenta pro jeden post ---
 const InstagramPost = React.memo<PostProps>(({ event, isSelected, onToggle, registerRef }) => {
@@ -123,14 +249,8 @@ const InstagramPost = React.memo<PostProps>(({ event, isSelected, onToggle, regi
 
             setPublishStatus("Odesílám do prohlížeče...")
 
-            const formatDate = (dateString: string) => {
-                const date = new Date(dateString)
-                const day = String(date.getDate()).padStart(2, "0")
-                const month = String(date.getMonth() + 1).padStart(2, "0")
-                const year = date.getFullYear()
-                return `${day}. ${month}. ${year}`
-            }
-            const caption = `Akce v Brně ${formatDate(event.date)} \n\n#brno #party #akcebrno #kamvbrne`
+            const formattedDate = formatDate(event.date)
+            const caption = `Akce v Brně ${formattedDate} \n\n#brno #party #akcebrno #kamvbrne`
 
             const response = await fetch("http://localhost:8000/ig-publish", {
                 method: "POST",
@@ -258,6 +378,7 @@ export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> =
     const [isBatchPublishing, setIsBatchPublishing] = useState(false)
     const [batchStatus, setBatchStatus] = useState<string | null>(null)
     const [hasInitializedSelection, setHasInitializedSelection] = useState(false)
+    const [titleImageIndex, setTitleImageIndex] = useState(0)
     const postRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
     const allEvents = useMemo(() => {
@@ -284,10 +405,24 @@ export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> =
             .filter((e) => e.title)
     }, [data])
 
+    const titleImageUrl = useMemo(() => {
+        if (allEvents.length === 0) return null
+        const withImg = allEvents.filter((e) => e.image_url)
+        if (withImg.length === 0) return allEvents[0].image_url
+        return withImg[titleImageIndex % withImg.length].image_url
+    }, [allEvents, titleImageIndex])
+
+    const venuesString = useMemo(() => {
+        const uniqueVenues = Array.from(new Set(allEvents.map((e) => e.venue).filter(Boolean)))
+        return uniqueVenues.join(" | ")
+    }, [allEvents])
+
     // Auto-select all events when they are first loaded
     useEffect(() => {
         if (allEvents.length > 0 && !hasInitializedSelection) {
-            setSelectedIndices(new Set(allEvents.map((e) => e.id)))
+            const ids = allEvents.map((e) => e.id)
+            ids.unshift("title-post")
+            setSelectedIndices(new Set(ids))
             setHasInitializedSelection(true)
         }
     }, [allEvents, hasInitializedSelection])
@@ -308,6 +443,16 @@ export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> =
         postRefs.current[id] = el
     }, [])
 
+    const selectAll = useCallback(() => {
+        const ids = allEvents.map((e) => e.id)
+        ids.unshift("title-post")
+        setSelectedIndices(new Set(ids))
+    }, [allEvents])
+
+    const deselectAll = useCallback(() => {
+        setSelectedIndices(new Set())
+    }, [])
+
     const publishBatch = async () => {
         if (selectedIndices.size === 0) {
             alert("Vyberte alespoň jednu akci k publikování.")
@@ -319,21 +464,27 @@ export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> =
 
         try {
             const imagesBase64: string[] = []
-            // Use order from allEvents for batch
+
+            // Order: title-post first if selected, then events
+            const idsToProcess: string[] = []
+            if (selectedIndices.has("title-post")) {
+                idsToProcess.push("title-post")
+            }
+
+            // Use order from allEvents for the rest
             const selectedEvents = allEvents.filter((e) => selectedIndices.has(e.id))
+            selectedEvents.forEach((e) => idsToProcess.push(e.id))
 
-            for (const event of selectedEvents) {
-                const ref = postRefs.current[event.id]
+            for (const id of idsToProcess) {
+                const ref = postRefs.current[id]
                 if (ref) {
-                    const actualId = ref.getAttribute("data-event-id")
-                    console.log(`[Batch] processing: target=${event.id}, actual=${actualId}`)
-
+                    console.log(`[Batch] processing: ${id}`)
                     // Wait for image to be fully ready in the DOM
                     const img = ref.querySelector("img") as HTMLImageElement
                     if (img) {
                         // Check if it's already a Data URL (which we pre-fetched)
                         if (!img.src.startsWith("data:")) {
-                            console.log(`[Batch] Waiting for Data URL for: ${event.id}`)
+                            console.log(`[Batch] Waiting for Data URL for: ${id}`)
                             // Wait up to 5 seconds for the pre-fetch to complete
                             let attempts = 0
                             while (!img.src.startsWith("data:") && attempts < 50) {
@@ -352,16 +503,17 @@ export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> =
                         cacheBust: false,
                     })
                     imagesBase64.push(dataUrl)
-                    console.log(`[Batch] captured image for ${event.id}, size: ${dataUrl.length}`)
+                    console.log(`[Batch] captured image for ${id}, size: ${dataUrl.length}`)
                 } else {
-                    console.warn(`[Batch] Ref not found for: ${event.id}`)
+                    console.warn(`[Batch] Ref not found for: ${id}`)
                 }
             }
 
             setBatchStatus("Odesílám dávku na Instagram...")
 
             const firstEvent = selectedEvents[0]
-            const caption = `Akce v Brně ${firstEvent?.date || new Date().toLocaleDateString("cs-CZ")} \n\n#brno #party #akcebrno #kamvbrne`
+            const formattedDate = firstEvent?.date ? formatDate(firstEvent.date) : new Date().toLocaleDateString("cs-CZ")
+            const caption = `Akce v Brně ${formattedDate} \n\n#brno #party #akcebrno #kamvbrne`
 
             const response = await fetch("http://localhost:8000/ig-publish", {
                 method: "POST",
@@ -399,6 +551,12 @@ export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> =
             {allEvents.length > 0 && (
                 <div className={styles.batchActions}>
                     <div className={styles.selectionInfo}>{selectedIndices.size} vybráno</div>
+                    <button onClick={selectAll} className={styles.downloadBtn}>
+                        Vybrat vše
+                    </button>
+                    <button onClick={deselectAll} className={styles.downloadBtn}>
+                        Zrušit výběr
+                    </button>
                     <button
                         onClick={publishBatch}
                         disabled={isBatchPublishing || selectedIndices.size === 0}
@@ -419,15 +577,26 @@ export const InstagramGeneratorPage: React.FC<{ data: Record<string, any[]> }> =
                         </p>
                     </div>
                 ) : (
-                    allEvents.map((event) => (
-                        <InstagramPost
-                            key={event.id}
-                            event={event}
-                            isSelected={selectedIndices.has(event.id)}
-                            onToggle={() => toggleSelection(event.id)}
-                            registerRef={(el) => registerRef(event.id, el)}
+                    <>
+                        <InstagramTitlePost
+                            id="title-post"
+                            imageUrl={titleImageUrl}
+                            venues={venuesString}
+                            isSelected={selectedIndices.has("title-post")}
+                            onToggle={() => toggleSelection("title-post")}
+                            onRefresh={() => setTitleImageIndex((prev) => prev + 1)}
+                            registerRef={(el) => registerRef("title-post", el)}
                         />
-                    ))
+                        {allEvents.map((event) => (
+                            <InstagramPost
+                                key={event.id}
+                                event={event}
+                                isSelected={selectedIndices.has(event.id)}
+                                onToggle={() => toggleSelection(event.id)}
+                                registerRef={(el) => registerRef(event.id, el)}
+                            />
+                        ))}
+                    </>
                 )}
             </div>
         </div>

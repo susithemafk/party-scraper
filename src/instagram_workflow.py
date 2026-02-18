@@ -13,7 +13,7 @@ env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
 just_open_the_browser = False
-headless = False
+headless = True
 
 
 
@@ -242,6 +242,7 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
 
             print("Workflow completed.")
 
+        await human_delay(30000, 35000)
         await browser.close()
 
 
