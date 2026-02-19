@@ -3,8 +3,10 @@ Image Generator - Creates Instagram-style event images using Playwright.
 Replicates the InstagramGenerator component's visual design.
 """
 import base64
+import random
 import re
 import unicodedata
+from datetime import datetime
 from pathlib import Path
 from string import Template
 from typing import Dict, List, Optional, Tuple
@@ -20,7 +22,7 @@ def download_image_as_data_uri(url: str) -> Optional[str]:
         req = Request(
             url,
             headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             },
         )
         with urlopen(req, timeout=15) as resp:
@@ -116,8 +118,8 @@ def build_event_html(event: dict, venue: str) -> str:
     )
 
 
-def build_title_html(venues_str: str, date_str: str) -> str:
-    return TITLE_TEMPLATE.substitute(venues_str=venues_str, date_str=date_str)
+def build_title_html(venues_str: str, date_str: str, background_html: str = "") -> str:
+    return TITLE_TEMPLATE.substitute(venues_str=venues_str, date_str=date_str, background_html=background_html)
 
 
 def generate_event_images(
@@ -129,29 +131,7 @@ def generate_event_images(
     html_dir = output_dir_path / "html"
     output_dir_path.mkdir(parents=True, exist_ok=True)
     generated_files: List[str] = []
-
-    if generate_title:
-        all_venues = [v for v in processed_events.keys() if processed_events[v]]
-        venues_str = " | ".join(all_venues)
-
-        from datetime import datetime
-
-        today = datetime.now()
-        date_display = f"{today.day:02d}. {today.month:02d}."
-
-        title_html = build_title_html(venues_str, date_display)
-        title_path = output_dir_path / "title-post.png"
-        title_html_path = html_dir / "title-post.html"
-
-        try:
-            success, error = render_html_with_playwright(title_html, title_html_path, title_path)
-            if success:
-                generated_files.append(str(title_path))
-                print(f"[ImageGen] Generated title image: {title_path}")
-            else:
-                print(f"[ImageGen] ERROR generating title image: {error}")
-        except Exception as exc:
-            print(f"[ImageGen] ERROR generating title image: {exc}")
+    background_candidates: List[str] = []
 
     for venue, events in processed_events.items():
         if not events:
@@ -179,6 +159,10 @@ def generate_event_images(
                 else:
                     event = {**event, "image_url": ""}
 
+            final_image_url = event.get("image_url", "")
+            if final_image_url:
+                background_candidates.append(final_image_url)
+
             event_html = build_event_html(event, venue)
             full_path = venue_dir / filename
             html_path = html_dir / venue / f"{slug}.html"
@@ -192,6 +176,35 @@ def generate_event_images(
                     print(f"[ImageGen] ERROR generating image for '{title}': {error}")
             except Exception as exc:
                 print(f"[ImageGen] ERROR generating image for '{title}': {exc}")
+
+    if generate_title:
+        all_venues = [v for v in processed_events.keys() if processed_events[v]]
+        venues_str = " | ".join(all_venues)
+
+        today = datetime.now()
+        date_display = f"{today.day:02d}. {today.month:02d}."
+
+        background_html = ""
+        if background_candidates:
+            chosen_background = random.choice(background_candidates)
+            background_html = (
+                f'<img src="{chosen_background}" class="background-image" '
+                "alt=\"Akce v Brně\" />"
+            )
+
+        title_html = build_title_html(venues_str, date_display, background_html)
+        title_path = output_dir_path / "title-post.png"
+        title_html_path = html_dir / "title-post.html"
+
+        try:
+            success, error = render_html_with_playwright(title_html, title_html_path, title_path)
+            if success:
+                generated_files.append(str(title_path))
+                print(f"[ImageGen] Generated title image: {title_path}")
+            else:
+                print(f"[ImageGen] ERROR generating title image: {error}")
+        except Exception as exc:
+            print(f"[ImageGen] ERROR generating title image: {exc}")
 
     print(f"\n[ImageGen] Total images generated: {len(generated_files)}")
     return generated_files
