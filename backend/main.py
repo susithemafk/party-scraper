@@ -263,6 +263,7 @@ async def proxy_image(url: str):
 @app.post("/fetch-html")
 async def fetch_html(request: dict):
     url = request.get("url")
+    base_url = request.get("base_url") 
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
 
@@ -273,7 +274,7 @@ async def fetch_html(request: dict):
         async with Stealth().use_async(async_playwright()) as p:
             # Spustíme prohlížeč
             browser = await p.chromium.launch(
-                headless=True, # Pokud tě stále blokují, zkus False
+                headless=False, # Pokud tě stále blokují, zkus False
                 args=["--no-sandbox"] 
             )
 
@@ -290,30 +291,24 @@ async def fetch_html(request: dict):
             # 3. Předstíráme lidské chování - návštěva hlavní stránky (Referer)
             # DataDome často blokuje přímé skoky na hluboké URL
             try:
-                print(f"[Fetcher] Visiting home page first...")
-                await page.goto("https://ra.co/", wait_until="domcontentloaded", timeout=20000)
+                print(f"[Fetcher] Visiting home page first: {base_url}")
+                await page.goto(base_url, wait_until="domcontentloaded", timeout=20000)
                 await asyncio.sleep(random.uniform(1, 2))
             except:
                 pass # Ignorujeme chyby na home page
 
             # 4. Samotný skok na cílovou URL
             print(f"[Fetcher] Navigating to target: {url}")
-            response = await page.goto(url, wait_until="networkidle", timeout=60000)
+            response = await page.goto(url, wait_until="domcontentloaded", timeout=10000)
 
             # Kontrola statusu (DataDome vrací 403 při detekci)
             if response.status == 403:
                 print("[Fetcher] ALERT: DataDome 403 Forbidden detected!")
                 # Tady můžeš zkusit malý scroll, aby se aktivovaly eventy
                 await page.mouse.wheel(0, 500)
-                await asyncio.sleep(3)
+                raise HTTPException(status_code=403, detail="Blocked by DataDome")
 
-            # 5. Počkáme na hydrataci Next.js (hledáme základní prvek RA)
-            try:
-                # RA používá pro detaily akcí nebo klubů specifické selektory
-                # Pokud selektor neznáš, počkej aspoň na 'section' nebo 'footer'
-                await page.wait_for_selector("footer", timeout=10000)
-            except:
-                print("[Fetcher] Warning: Page footer not found, content might be partial.")
+            await page.mouse.wheel(0, 511)
 
             # Extra pauza pro doběhnutí JavaScriptu
             await asyncio.sleep(2)

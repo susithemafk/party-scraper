@@ -5,6 +5,7 @@ import { ParserFunc, ScrapedItem } from "../types"
 interface ScraperSectionProps {
     title: string
     defaultUrl: string
+    baseUrl: string
     parserFunc: ParserFunc
     onResult?: (title: string, items: ScrapedItem[] | null) => void
     onLoading?: (isLoading: boolean) => void
@@ -17,7 +18,8 @@ interface ScraperSectionProps {
 
 export const ScraperSection: React.FC<ScraperSectionProps> = ({
     title,
-    defaultUrl,
+    defaultUrl, 
+    baseUrl,
     parserFunc,
     onResult,
     onLoading,
@@ -35,6 +37,7 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({
         setHtmlInput,
         result,
         loading,
+        error,
         copied,
         filterPast,
         setFilterPast,
@@ -43,7 +46,7 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({
         handleFetchAndParse,
         handleManualParse,
         handleCopy,
-    } = useScraper(parserFunc, defaultUrl, onlyToday, setOnlyToday)
+    } = useScraper(parserFunc, defaultUrl, baseUrl, onlyToday, setOnlyToday)
 
     // Automatically open if loading starts or if results are found
     // useEffect(() => {
@@ -74,6 +77,16 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({
     }, [loading, onLoading])
 
     const isEmpty = result !== null && result.length === 0 && !loading
+    // Compute a semantic status class for styling based on current state
+    const statusClass = error
+        ? "status-error"
+        : loading
+        ? "status-loading"
+        : result && result.length > 0
+            ? "status-has-results"
+            : result !== null && result.length === 0
+                ? "status-no-results"
+                : "status-idle"
 
     useEffect(() => {
         if (expandTrigger && expandTrigger > 0) setIsOpen(true)
@@ -84,7 +97,7 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({
     }, [collapseTrigger])
 
     return (
-        <div className={`scraper-section ${isEmpty ? "empty-result" : ""} ${loading ? "is-loading" : ""} ${isOpen ? "is-open" : "is-collapsed"}`}>
+        <div className={`scraper-section ${statusClass} ${isEmpty ? "empty-result" : ""} ${loading ? "is-loading" : ""} ${isOpen ? "is-open" : "is-collapsed"}`}>
             <div
                 style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
                 onClick={() => setIsOpen(!isOpen)}
@@ -100,6 +113,11 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({
                         <div className="venue-loading-tag">
                             <span className="dot-pulse"></span>
                             FETCHING...
+                        </div>
+                    )}
+                    {error && !loading && (
+                        <div className="venue-status-tag" style={{ color: "#ef4444" }} title={error}>
+                            ERROR
                         </div>
                     )}
                     {result && !loading && (

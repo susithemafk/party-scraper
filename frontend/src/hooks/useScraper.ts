@@ -5,6 +5,7 @@ import { ParserFunc, ScrapedItem } from "../types"
 export const useScraper = (
     parserFunc: ParserFunc,
     initialUrl: string = "",
+    baseUrl: string = "",
     onlyToday: boolean,
     setOnlyToday: (val: boolean) => void
 ) => {
@@ -13,6 +14,7 @@ export const useScraper = (
     const [rawResult, setRawResult] = useState<ScrapedItem[] | null>(null)
     const [loading, setLoading] = useState<boolean>(false)
     const [copied, setCopied] = useState<boolean>(false)
+    const [error, setError] = useState<string | null>(null)
 
     // Filter settings
     const [filterPast, setFilterPast] = useState<boolean>(true)
@@ -59,23 +61,26 @@ export const useScraper = (
         if (!url.trim()) return
         setLoading(true)
         setRawResult(null)
+        setError(null)
 
         try {
-            const response = await axios.post("http://localhost:8000/fetch-html", { url })
+            const response = await axios.post("http://localhost:8000/fetch-html", { url, base_url: baseUrl })
             const html = response.data.html
             const data = parserFunc ? parserFunc(html) : []
             setRawResult(data)
         } catch (err: any) {
             console.error(err)
             const msg = err.response?.data?.detail || err.message
+            setError(msg)
             alert(`Fetch failed: ${msg}`)
         } finally {
             setLoading(false)
         }
-    }, [url, parserFunc])
+    }, [url, baseUrl, parserFunc])
 
     const handleManualParse = useCallback(() => {
         if (!htmlInput.trim()) return
+        setError(null)
         const data = parserFunc ? parserFunc(htmlInput) : []
         setRawResult(data)
     }, [htmlInput, parserFunc])
@@ -95,6 +100,7 @@ export const useScraper = (
         setHtmlInput,
         result,
         loading,
+        error,
         copied,
         filterPast,
         setFilterPast,
