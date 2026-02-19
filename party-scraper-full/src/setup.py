@@ -4,10 +4,9 @@ Setup module - ensures all dependencies are installed and configured.
 import subprocess
 import sys
 import os
-import shutil
 
 
-def check_python_packages(requirements_file: str = None) -> bool:
+def check_python_packages(requirements_file: str) -> bool:
     """Check and install required Python packages."""
     if requirements_file and os.path.exists(requirements_file):
         print("[Setup] Installing Python packages from requirements.txt...")
@@ -56,7 +55,6 @@ def check_env_file(project_root: str) -> bool:
         print(f"[Setup] Please edit {env_path} and add your GEMINI_API_KEY")
         return False
 
-    # Check for required keys
     with open(env_path, "r") as f:
         content = f.read()
 
@@ -67,33 +65,6 @@ def check_env_file(project_root: str) -> bool:
     print("[Setup] .env file is configured.")
     return True
 
-
-def check_chrome_browser() -> bool:
-    """Check if Chrome or Chromium is available for html2image."""
-    chrome_paths = [
-        # Windows
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
-        # Linux
-        "/usr/bin/google-chrome",
-        "/usr/bin/chromium-browser",
-        "/usr/bin/chromium",
-        # macOS
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    ]
-    for path in chrome_paths:
-        if os.path.exists(path):
-            print(f"[Setup] Chrome found at: {path}")
-            return True
-
-    # Try which/where
-    if shutil.which("chrome") or shutil.which("chromium") or shutil.which("google-chrome"):
-        print("[Setup] Chrome found in PATH.")
-        return True
-
-    print("[Setup] WARNING: Chrome/Chromium not found. html2image requires it for image generation.")
-    return False
 
 
 def ensure_temp_dirs(project_root: str):
@@ -122,10 +93,6 @@ def run_setup(project_root: str) -> bool:
 
     if not check_env_file(project_root):
         all_ok = False
-
-    if not check_chrome_browser():
-        # Not fatal - image generation is the last step
-        print("[Setup] Image generation may not work without Chrome.")
 
     ensure_temp_dirs(project_root)
 

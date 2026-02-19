@@ -7,4 +7,3 @@ pytest-asyncio
 playwright
 playwright-stealth
 beautifulsoup4
-html2image

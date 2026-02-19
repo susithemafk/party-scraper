@@ -1,5 +1,5 @@
 Let's recreate this application so the frontend nor backend doesn't have to be running.
-Create a new folder called "party-scraper-backend-full". In this folder there will be main.py for running the script. The logic will be in "party-scraper-backend-full/src" folder. Each part of logic will have its own file in the "src" folder. The main.py will import these files and run the them.
+Create a new folder called "party-scraper-full". In this folder there will be main.py for running the script. The logic will be in "party-scraper-full/src" folder. Each part of logic will have its own file in the "src" folder. The main.py will import these files and run the them.
 
 Application will have this logic:
 
@@ -136,20 +136,20 @@ temp/
         ...
 ```
 
-7. that is all. 
+7. that is all.
 
-CRITICAL! 
+CRITICAL!
 follow already implemented logic, parsers, url parsers, etc. as much as possible. Do not change the logic if it's not necessary. The goal is to make the application work without the need of running the frontend or backend separately, not to change the logic of the application.
 
 
 CRITICAL!
-create tests for each part of the logic with example input and expected output. 
+create tests for each part of the logic with example input and expected output.
 
 CRITICAL!
-filter venues for only today before using crawl4ai. 
+filter venues for only today before using crawl4ai.
 
 CRITICAL!
-always run python static analysis after editing a python file. 
+always run python static analysis after editing a python file.
 
 CRITICAL!
 always first enter the virtual environment using `.\venv\Scripts\activate` before running any python command.
