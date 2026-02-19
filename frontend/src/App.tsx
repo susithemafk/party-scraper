@@ -16,7 +16,8 @@ import { ScrapedItem } from "./types"
 
 const VENUES = [
     { title: "Bobyhall", url: "https://bobyhall.cz/program-bobyhall/", parser: bobyhallParser },
-    { title: "Fraktal", url: "https://ra.co/clubs/224489", parser: raParser },
+    { title: "Fraktal", url: "https://ra.co/clubs/224489/events", parser: raParser },
+    { title: "pul.pit", url: "https://ra.co/clubs/206733/events", parser: raParser },
     { title: "Metro Music Bar", url: "https://www.metromusic.cz/program/", parser: metroParser },
     { title: "První patro", url: "https://patrobrno.cz/", parser: patroParser },
     { title: "Perpetuum", url: "https://www.perpetuumklub.cz/program/", parser: perpetuumParser },
