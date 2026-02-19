@@ -42,5 +42,7 @@ https://bobyhall.cz/program-bobyhall/
 
 Jazz bar U kouřícího králíka
 
+Typos
+
 
 <!-- https://www.jsmezbrna.cz/events.aspx?ec=5 -->
