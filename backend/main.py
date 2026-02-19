@@ -14,6 +14,8 @@ import base64
 import uuid
 from instagrapi import Client
 from playwright.async_api import async_playwright
+from playwright_stealth import Stealth
+import random 
 
 # --- 1. KRITICKÁ ČÁST PRO WINDOWS ---
 # Musí to být úplně nahoře, dříve než se vytvoří jakákoliv async smyčka
@@ -264,25 +266,66 @@ async def fetch_html(request: dict):
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
 
-    print(f"[Fetcher] Requesting HTML for: {url}")
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            # Simulate a real user agent to bypass basic checks
-            await page.set_extra_http_headers({
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            })
+    print(f"[Fetcher] Requesting HTML with Recommended Stealth for: {url}")
 
-            # Wait for network idle to ensure dynamic content load
-            await page.goto(url, wait_until="networkidle", timeout=60000)
+    try:
+        # 1. Použití doporučeného Stealth wrapperu podle dokumentace
+        async with Stealth().use_async(async_playwright()) as p:
+            # Spustíme prohlížeč
+            browser = await p.chromium.launch(
+                headless=True, # Pokud tě stále blokují, zkus False
+                args=["--no-sandbox"] 
+            )
+
+            # 2. Vytvoření kontextu s reálnými parametry
+            # Je důležité, aby User-Agent odpovídal tomu, co Stealth emuluje
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                viewport={"width": 1920, "height": 1080},
+                locale="cs-CZ"
+            )
+
+            page = await context.new_page()
+
+            # 3. Předstíráme lidské chování - návštěva hlavní stránky (Referer)
+            # DataDome často blokuje přímé skoky na hluboké URL
+            try:
+                print(f"[Fetcher] Visiting home page first...")
+                await page.goto("https://ra.co/", wait_until="domcontentloaded", timeout=20000)
+                await asyncio.sleep(random.uniform(1, 2))
+            except:
+                pass # Ignorujeme chyby na home page
+
+            # 4. Samotný skok na cílovou URL
+            print(f"[Fetcher] Navigating to target: {url}")
+            response = await page.goto(url, wait_until="networkidle", timeout=60000)
+
+            # Kontrola statusu (DataDome vrací 403 při detekci)
+            if response.status == 403:
+                print("[Fetcher] ALERT: DataDome 403 Forbidden detected!")
+                # Tady můžeš zkusit malý scroll, aby se aktivovaly eventy
+                await page.mouse.wheel(0, 500)
+                await asyncio.sleep(3)
+
+            # 5. Počkáme na hydrataci Next.js (hledáme základní prvek RA)
+            try:
+                # RA používá pro detaily akcí nebo klubů specifické selektory
+                # Pokud selektor neznáš, počkej aspoň na 'section' nebo 'footer'
+                await page.wait_for_selector("footer", timeout=10000)
+            except:
+                print("[Fetcher] Warning: Page footer not found, content might be partial.")
+
+            # Extra pauza pro doběhnutí JavaScriptu
+            await asyncio.sleep(2)
+
             html = await page.content()
             await browser.close()
 
-            print(f"[Fetcher] Successfully retrieved {len(html)} characters")
+            print(f"[Fetcher] Success: {len(html)} chars retrieved.")
             return {"html": html}
+
     except Exception as e:
-        print(f"[Fetcher] Error: {e}")
+        print(f"[Fetcher] Critical Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
