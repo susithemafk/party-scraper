@@ -1,0 +1,10 @@
+crawl4ai
+google-genai
+pydantic
+python-dotenv
+pytest
+pytest-asyncio
+playwright
+playwright-stealth
+beautifulsoup4
+discord.py
