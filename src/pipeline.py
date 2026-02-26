@@ -231,38 +231,65 @@ async def ensure_main_flow() -> None:
     # await process_today_events()
 
     # 4. Generate event images only (sync Playwright — run outside async loop)
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(
-        None, partial(generate_images_from_processed, generate_title=False)
-    )
+    # loop = asyncio.get_running_loop()
+    # await loop.run_in_executor(
+    #     None, partial(generate_images_from_processed, generate_title=False)
+    # )
 
-    # 5. Send to Discord poll
-    from .review_images import run_review
+    # # 5. Send to Discord poll
+    # from .review_images import run_review
 
-    print("\n[Pipeline] Launching Discord review poll...")
-    approved_images = await run_review(GENERATED_IMAGES_DIR, TEMP_DIR)
+    # print("\n[Pipeline] Launching Discord review poll...")
+    # approved_images = await run_review(GENERATED_IMAGES_DIR, TEMP_DIR)
 
-    # 6. Generate title from approved venues only
-    print("\n[Pipeline] Generating title image from approved venues...")
-    if approved_images:
-        approved_venues = {
-            Path(p).parts[0] for p in approved_images if "/" in p
-        }
-        if approved_venues:
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(
-                None,
-                partial(generate_title_from_venues, approved_venues),
-            )
-            print(
-                f"[Pipeline] Title generated for: "
-                f"{', '.join(sorted(approved_venues))}"
-            )
-        else:
-            print("[Pipeline] No venue-specific images approved; skipping title.")
-    else:
-        print("[Pipeline] No images approved; skipping title generation.")
+    # # 6. Generate title from approved venues only
+    # print("\n[Pipeline] Generating title image from approved venues...")
+    # if approved_images:
+    #     approved_venues = {
+    #         Path(p).parts[0] for p in approved_images if "/" in p
+    #     }
+    #     if approved_venues:
+    #         loop = asyncio.get_running_loop()
+    #         await loop.run_in_executor(
+    #             None,
+    #             partial(generate_title_from_venues, approved_venues),
+    #         )
+    #         print(
+    #             f"[Pipeline] Title generated for: "
+    #             f"{', '.join(sorted(approved_venues))}"
+    #         )
+    #     else:
+    #         print("[Pipeline] No venue-specific images approved; skipping title.")
+    # else:
+    #     print("[Pipeline] No images approved; skipping title generation.")
 
     # 7. Copy approved images + title to temp/post, clean up generated/
-    print("\n[Pipeline] Finalizing post with approved images...")
-    _finalize_post(approved_images)
+    # print("\n[Pipeline] Finalizing post with approved images...")
+    # _finalize_post(approved_images)
+
+    # 8. Post to Instagram
+    from .instagram_workflow import run_instagram_workflow
+
+    # Collect all images in post order: title first, then events
+    post_images: list[str] = []
+    if POST_DIR.exists():
+        title_post = POST_DIR / "title-post.png"
+        if title_post.exists():
+            post_images.append(str(title_post))
+        for f in sorted(POST_DIR.iterdir()):
+            if f.suffix.lower() in {".png", ".jpg", ".jpeg"} and f.name != "title-post.png":
+                post_images.append(str(f))
+
+    if post_images:
+        today = datetime.now()
+        formatted_date = f"{today.day}.{today.month}.{today.year}"
+        caption = f"Akce v Brně {formatted_date}\n\n#brno #party #akcebrno #kamvbrne"
+
+        print(f"\n[Pipeline] Uploading {len(post_images)} image(s) to Instagram...")
+        await run_instagram_workflow(
+            image_paths=post_images,
+            caption=caption,
+            location="Brno, Czech Republic",
+        )
+    else:
+        print("[Pipeline] No images in post folder; skipping Instagram upload.")
