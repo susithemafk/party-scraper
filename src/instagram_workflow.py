@@ -60,35 +60,37 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
     user_data_dir = "./ig_session"
 
     async with async_playwright() as p:
-        context = await p.chromium.launch_persistent_context(
-            user_data_dir=user_data_dir,
-            headless=headless,
-            # Tady jsou klíčové parametry pro stabilitu na Linuxu
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",     # Využije /tmp místo sdílené paměti
-                # Vypne GPU akceleraci (nutné na VPS)
-                "--disable-gpu",
-                "--font-render-hinting=none",  # Fix pro renderování textu
-                "--disable-web-security",
-                "--lang=en-US",
-            ],
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            viewport={'width': 1280, 'height': 720},
-            locale="en-US",
-            timezone_id="Europe/Prague"
-        )
-
-        page = await context.new_page()
-        await Stealth().apply_stealth_async(page)
-
-        print("Navigating to Instagram...")
-        await page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
-        await human_delay(3000, 5000)
-
+        context = None
+        page = None
         try:
+            context = await p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                headless=headless,
+                # Tady jsou klíčové parametry pro stabilitu na Linuxu
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",     # Využije /tmp místo sdílené paměti
+                    # Vypne GPU akceleraci (nutné na VPS)
+                    "--disable-gpu",
+                    "--font-render-hinting=none",  # Fix pro renderování textu
+                    "--disable-web-security",
+                    "--lang=en-US",
+                ],
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                viewport={'width': 1280, 'height': 720},
+                locale="en-US",
+                timezone_id="Europe/Prague"
+            )
+
+            page = await context.new_page()
+            await Stealth().apply_stealth_async(page)
+
+            print("Navigating to Instagram...")
+            await page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
+            await human_delay(3000, 5000)
+
             await page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
             await human_delay(3000, 5000)
             # Zkontrolujeme, zda vidíme tlačítko pro nový post nebo vyhledávání
@@ -272,22 +274,26 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
                 print(f"Could not find Share button: {e}")
 
             print("Workflow completed.")
+            await human_delay(30000, 35000)
         except Exception as exc:
             # Save a debug screenshot before re-raising
             screenshot_path = Path(
                 __file__).parent.parent / "temp" / "debug-screenshot.png"
             screenshot_path.parent.mkdir(parents=True, exist_ok=True)
             try:
-                await page.screenshot(path=str(screenshot_path), full_page=True)
-                print(
-                    f"[Instagram] Debug screenshot saved to {screenshot_path}")
+                if page is not None:
+                    await page.screenshot(path=str(screenshot_path), full_page=True)
+                    print(
+                        f"[Instagram] Debug screenshot saved to {screenshot_path}")
             except Exception:
                 print("[Instagram] Could not save debug screenshot.")
-            await context.close()
             raise exc
-
-        await human_delay(30000, 35000)
-        await context.close()
+        finally:
+            if context is not None:
+                try:
+                    await context.close()
+                except Exception as close_exc:
+                    print(f"[Instagram] Failed to close browser context cleanly: {close_exc}")
 
 
 if __name__ == "__main__":
