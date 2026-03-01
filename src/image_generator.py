@@ -14,6 +14,33 @@ from urllib.request import Request, urlopen
 from playwright.sync_api import sync_playwright
 
 
+def _get_fallback_location() -> str:
+    """Return the city display name for use as a fallback location label."""
+    try:
+        from .config import get_config
+        return get_config().fallback_location_label
+    except Exception:
+        return "City"
+
+
+def _get_title_text() -> str:
+    """Return the title text for the title-post image."""
+    try:
+        from .config import get_config
+        return get_config().title_text or "EVENTS"
+    except Exception:
+        return "EVENTS"
+
+
+def _get_title_alt() -> str:
+    """Return alt text for the title-post background image."""
+    try:
+        from .config import get_config
+        return get_config().title_alt or "Events"
+    except Exception:
+        return "Events"
+
+
 def download_image_as_data_uri(url: str) -> Optional[str]:
     """Download an image URL and return it as a base64 data URI."""
     if not url:
@@ -90,7 +117,7 @@ def build_event_html(event: dict, venue: str) -> str:
     else:
         bg_html = '<div class="fallback-background"></div>'
 
-    location_label = venue or place or "Brno"
+    location_label = venue or place or _get_fallback_location()
 
     detail_parts = []
     if venue:
@@ -118,8 +145,11 @@ def build_event_html(event: dict, venue: str) -> str:
     )
 
 
-def build_title_html(venues_str: str, date_str: str, background_html: str = "") -> str:
-    return TITLE_TEMPLATE.substitute(venues_str=venues_str, date_str=date_str, background_html=background_html)
+def build_title_html(venues_str: str, date_str: str, background_html: str = "", title_text: str = "") -> str:
+    return TITLE_TEMPLATE.substitute(
+        venues_str=venues_str, date_str=date_str,
+        background_html=background_html, title_text=title_text or "EVENTS",
+    )
 
 
 def generate_event_images(
@@ -189,10 +219,11 @@ def generate_event_images(
             chosen_background = random.choice(background_candidates)
             background_html = (
                 f'<img src="{chosen_background}" class="background-image" '
-                "alt=\"Akce v Brně\" />"
+                f'alt="{_get_title_alt()}" />'
             )
 
-        title_html = build_title_html(venues_str, date_display, background_html)
+        title_html = build_title_html(venues_str, date_display, background_html,
+                                      title_text=_get_title_text())
         title_path = output_dir_path / "title-post.png"
         title_html_path = html_dir / "title-post.html"
 

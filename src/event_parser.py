@@ -8,80 +8,12 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Callable
 
-from .parsers.artbar import artbar_parser
-from .parsers.bobyhall import bobyhall_parser
-from .parsers.fleda import fleda_parser
-from .parsers.kabinet import kabinet_parser
-from .parsers.metro import metro_parser
-from .parsers.patro import patro_parser
-from .parsers.perpetuum import perpetuum_parser
-from .parsers.ra import ra_parser
-from .parsers.sono import sono_parser
+from .config import get_config
 
 
-# Venue configuration - matches the frontend VENUES array
-VENUES = [
-    {
-        "title": "Bobyhall",
-        "url": "https://bobyhall.cz/program-bobyhall/",
-        "baseUrl": "https://bobyhall.cz/",
-        "parser": bobyhall_parser,
-    },
-    {
-        "title": "Fraktal",
-        "url": "https://ra.co/clubs/224489/events",
-        "baseUrl": "https://ra.co/",
-        "parser": ra_parser,
-    },
-    {
-        "title": "pul.pit",
-        "url": "https://ra.co/clubs/206733/events",
-        "baseUrl": "https://ra.co/",
-        "parser": ra_parser,
-    },
-    {
-        "title": "Metro Music Bar",
-        "url": "https://www.metromusic.cz/program/",
-        "baseUrl": "https://www.metromusic.cz/",
-        "parser": metro_parser,
-    },
-    {
-        "title": "První patro",
-        "url": "https://patrobrno.cz/",
-        "baseUrl": "https://patrobrno.cz/",
-        "parser": patro_parser,
-    },
-    {
-        "title": "Perpetuum",
-        "url": "https://www.perpetuumklub.cz/program/",
-        "baseUrl": "https://www.perpetuumklub.cz/",
-        "parser": perpetuum_parser,
-    },
-    {
-        "title": "Fléda",
-        "url": "https://www.fleda.cz/program/",
-        "baseUrl": "https://www.fleda.cz/",
-        "parser": fleda_parser,
-    },
-    {
-        "title": "Sono Music Club",
-        "url": "https://www.sono.cz/program/",
-        "baseUrl": "https://www.sono.cz/",
-        "parser": sono_parser,
-    },
-    {
-        "title": "Kabinet Múz",
-        "url": "https://www.kabinetmuz.cz/program",
-        "baseUrl": "https://www.kabinetmuz.cz/",
-        "parser": kabinet_parser,
-    },
-    {
-        "title": "Artbar",
-        "url": "https://www.artbar.club/shows",
-        "baseUrl": "https://www.artbar.club/",
-        "parser": artbar_parser,
-    },
-]
+def get_venues() -> List[dict]:
+    """Return the venue list from the active city config (legacy dict format)."""
+    return get_config().venues_as_legacy_list()
 
 
 def filter_and_sort_events(
@@ -164,7 +96,7 @@ def parse_all_venues(html_results: Dict[str, Optional[str]], filter_past: bool =
         Dict mapping venue title to list of {url, date} dicts.
     """
     # Build parser lookup
-    parser_map = {v["title"]: v["parser"] for v in VENUES}
+    parser_map = {v["title"]: v["parser"] for v in get_venues()}
 
     all_events = {}
     for title, html in html_results.items():

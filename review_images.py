@@ -1,17 +1,25 @@
 """Standalone wrapper — delegates to the src.review_images module.
 
 Usage:
-    python review_images.py
+    python review_images.py --config configs/brno.yaml
 """
 
+import argparse
 import asyncio
 
-from src.pipeline import GENERATED_IMAGES_DIR, TEMP_DIR
+from src.config import init_config
+from src.pipeline import _get_generated_images_dir, _get_temp_dir
 from src.review_images import run_review
 
 
 async def main() -> None:
-    approved = await run_review(GENERATED_IMAGES_DIR, TEMP_DIR)
+    parser = argparse.ArgumentParser(description="Party Scraper — Review Images")
+    parser.add_argument("--config", required=True, help="Path to city YAML config file")
+    args = parser.parse_args()
+
+    init_config(args.config)
+
+    approved = await run_review(_get_generated_images_dir(), _get_temp_dir())
     if approved:
         print(f"\nApproved {len(approved)} image(s):")
         for p in approved:

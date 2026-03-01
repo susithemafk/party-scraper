@@ -1,0 +1,30 @@
+##
+
+we have two scripts `run_morning.py` and `run_post.py`.
+
+first one scrapes websites and sends todays events to discord
+second one takes survey results and posts desired posts to instagram.
+
+##
+
+configuration is done via `configs/` directory
+each configuration has its own `.env.city` file with credentials and discord room.
+
+##
+
+each party-scraper has to have it's own `ig_session` for instagram authentication.
+ig sessions are stored in `ig_sessions/` directory. to get the session run `run_get_ig_session.py` with config `python ./run_get_ig_session.py --config ./configs/brno.yaml`.
+then put the whole `ig_sessions` folder to the server by `scp` or just anything, same as `.env` files.
+
+##
+
+to run party-scraper at certain times, use `cron`
+
+command: `crontab -e`
+content:
+
+```bash
+0 8 * * * cd /home/ubuntu/party-scraper && /home/ubuntu/party-scraper/venv/bin/python /home/ubuntu/party-scraper/run_morning.py --config ./configs/brno.yaml >> /home/ubuntu/party-scraper/run_morning.log 2>&1
+
+1 0 * * * cd /home/ubuntu/party-scraper && /home/ubuntu/party-scraper/venv/bin/python /home/ubuntu/party-scraper/run_post.py --config ./configs/brno.yaml >> /home/ubuntu/party-scraper/run_post.log 2>&1
+```

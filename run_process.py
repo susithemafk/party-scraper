@@ -1,7 +1,9 @@
 """Process today's events with AI and cache the detailed results."""
+import argparse
 import asyncio
+
+from src.config import init_config
 from src.pipeline import (
-    PROCESSED_EVENTS_PATH,
     build_today_events,
     load_fetched_events,
     process_today_events,
@@ -9,6 +11,11 @@ from src.pipeline import (
 
 
 async def main() -> None:
+    parser = argparse.ArgumentParser(description="Party Scraper — Process")
+    parser.add_argument("--config", required=True, help="Path to city YAML config file")
+    args = parser.parse_args()
+
+    cfg = init_config(args.config)
     print("\n[STEP 3] Loading fetched events for AI processing...\n")
     try:
         fetched_events = load_fetched_events()
@@ -30,7 +37,6 @@ async def main() -> None:
     )
 
     print(f"[STEP 3] Processed {processed_count}/{today_total} events")
-    print(f"[STEP 3] AI results written to: {PROCESSED_EVENTS_PATH}")
 
 
 if __name__ == "__main__":

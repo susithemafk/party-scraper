@@ -1,0 +1,1 @@
+[] - A2/Alterna přidat

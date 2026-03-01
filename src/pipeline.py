@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
 from .ai_scraper import process_all_events
+from .config import get_config
 from .event_parser import (
-    VENUES,
+    get_venues,
     filter_today_only,
     parse_all_venues,
     save_fetched_events,
@@ -22,15 +23,78 @@ from .image_generator import generate_event_images
 from .setup import run_setup
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-TEMP_DIR = PROJECT_ROOT / "temp"
-FETCHED_EVENTS_PATH = TEMP_DIR / "fetched-events.json"
-PROCESSED_EVENTS_PATH = TEMP_DIR / "processed-events.json"
-GENERATED_IMAGES_DIR = PROJECT_ROOT / "generated" / "images"
-POST_DIR = TEMP_DIR / "post"
+
+
+def _city_name() -> str:
+    """Return the active city slug for directory isolation."""
+    try:
+        return get_config().name
+    except RuntimeError:
+        return "default"
+
+
+# ── city-scoped paths ─────────────────────────────────────────────────────
+# Each city gets its own subdirectory under temp/ and generated/ so that
+# running two cities in parallel never conflicts.
+
+
+def _get_temp_dir() -> Path:
+    return PROJECT_ROOT / "temp" / _city_name()
+
+
+def _get_fetched_events_path() -> Path:
+    return _get_temp_dir() / "fetched-events.json"
+
+
+def _get_processed_events_path() -> Path:
+    return _get_temp_dir() / "processed-events.json"
+
+
+def _get_generated_images_dir() -> Path:
+    return PROJECT_ROOT / "generated" / _city_name() / "images"
+
+
+def _get_post_dir() -> Path:
+    return _get_temp_dir() / "post"
+
+
+# Backwards-compatible module-level aliases (read lazily)
+class _LazyPath:
+    """Descriptor that calls a factory each time it's accessed."""
+    def __init__(self, factory):
+        self._factory = factory
+    def __repr__(self):
+        return str(self._factory())
+    def __fspath__(self):
+        return str(self._factory())
+    def __str__(self):
+        return str(self._factory())
+    def __truediv__(self, other):
+        return self._factory() / other
+    @property
+    def parent(self):
+        return self._factory().parent
+    def exists(self):
+        return self._factory().exists()
+    def mkdir(self, **kw):
+        return self._factory().mkdir(**kw)
+    def open(self, *a, **kw):
+        return self._factory().open(*a, **kw)
+    def iterdir(self):
+        return self._factory().iterdir()
+    def is_dir(self):
+        return self._factory().is_dir()
+
+
+TEMP_DIR = _LazyPath(_get_temp_dir)
+FETCHED_EVENTS_PATH = _LazyPath(_get_fetched_events_path)
+PROCESSED_EVENTS_PATH = _LazyPath(_get_processed_events_path)
+GENERATED_IMAGES_DIR = _LazyPath(_get_generated_images_dir)
+POST_DIR = _LazyPath(_get_post_dir)
 
 
 def _ensure_temp_dir() -> None:
-    TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    _get_temp_dir().mkdir(parents=True, exist_ok=True)
 
 
 def run_setup_step() -> bool:
@@ -42,22 +106,23 @@ async def fetch_and_parse_events(
     *, filter_past: bool = True, max_results: int = 4
 ) -> Dict[str, list[dict[str, Any]]]:
     """Fetch HTML from venues, parse the events, and save the JSON snapshot."""
-    html_results = await fetch_all_venues(VENUES)
+    html_results = await fetch_all_venues(get_venues())
     fetched_events = parse_all_venues(
         html_results, filter_past=filter_past, max_results=max_results)
 
     _ensure_temp_dir()
-    save_fetched_events(fetched_events, FETCHED_EVENTS_PATH)
+    save_fetched_events(fetched_events, _get_fetched_events_path())
     return fetched_events
 
 
 def load_fetched_events() -> Dict[str, list[dict[str, Any]]]:
     """Read the cached events produced by the fetching stage."""
-    if not FETCHED_EVENTS_PATH.exists():
+    path = _get_fetched_events_path()
+    if not path.exists():
         raise FileNotFoundError(
-            f"Missing fetched events file: {FETCHED_EVENTS_PATH}")
+            f"Missing fetched events file: {path}")
 
-    with FETCHED_EVENTS_PATH.open("r", encoding="utf-8") as fh:
+    with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
 
 
@@ -80,17 +145,18 @@ async def process_today_events(
         today_events = build_today_events()
 
     _ensure_temp_dir()
-    processed = await process_all_events(today_events, PROCESSED_EVENTS_PATH)
+    processed = await process_all_events(today_events, str(_get_processed_events_path()))
     return processed
 
 
 def load_processed_events() -> Dict[str, list[dict[str, Any]]]:
     """Load the JSON that contains AI-processed events."""
-    if not PROCESSED_EVENTS_PATH.exists():
+    path = _get_processed_events_path()
+    if not path.exists():
         raise FileNotFoundError(
-            f"Missing processed events file: {PROCESSED_EVENTS_PATH}")
+            f"Missing processed events file: {path}")
 
-    with PROCESSED_EVENTS_PATH.open("r", encoding="utf-8") as fh:
+    with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
 
 
@@ -113,7 +179,7 @@ def generate_images_from_processed(
         processed_events = load_processed_events()
 
     if images_dir is None:
-        images_dir = GENERATED_IMAGES_DIR
+        images_dir = _get_generated_images_dir()
 
     images_dir.mkdir(parents=True, exist_ok=True)
     return generate_event_images(processed_events, str(images_dir), generate_title=generate_title)
@@ -131,7 +197,7 @@ def generate_title_from_venues(
     from .image_generator import build_title_html, render_html_with_playwright
 
     if images_dir is None:
-        images_dir = GENERATED_IMAGES_DIR
+        images_dir = _get_generated_images_dir()
 
     images_dir.mkdir(parents=True, exist_ok=True)
     html_dir = images_dir / "html"
@@ -151,14 +217,16 @@ def generate_title_from_venues(
             for p in venue_path.glob("*.png"):
                 background_candidates.append(str(p.as_posix()))
 
+    cfg = get_config()
     background_html = ""
     if background_candidates:
         chosen = random.choice(background_candidates)
         background_html = (
-            f'<img src="{chosen}" class="background-image" alt="Akce v Brn\u011b" />'
+            f'<img src="{chosen}" class="background-image" alt="{cfg.title_alt}" />'
         )
 
-    title_html = build_title_html(venues_str, date_display, background_html)
+    title_html = build_title_html(venues_str, date_display, background_html,
+                                  title_text=cfg.title_text)
     title_path = images_dir / "title-post.png"
     title_html_path = html_dir / "title-post.html"
 
@@ -184,38 +252,41 @@ def _finalize_post(approved_images: list[str]) -> None:
     - Copies ``title-post.png`` into ``temp/post/`` (placed first).
     - Removes the entire ``generated/`` directory.
     """
+    post_dir = _get_post_dir()
+    images_dir = _get_generated_images_dir()
+
     # clean previous post dir
-    if POST_DIR.exists():
-        shutil.rmtree(POST_DIR)
-    POST_DIR.mkdir(parents=True, exist_ok=True)
+    if post_dir.exists():
+        shutil.rmtree(post_dir)
+    post_dir.mkdir(parents=True, exist_ok=True)
 
     # remove generated html (not needed in output)
-    src_html = GENERATED_IMAGES_DIR / "html"
+    src_html = images_dir / "html"
     if src_html.exists():
         shutil.rmtree(src_html)
         print("[Pipeline] Deleted generated HTML")
 
     # copy title-post first
-    title_src = GENERATED_IMAGES_DIR / "title-post.png"
+    title_src = images_dir / "title-post.png"
     if title_src.exists():
-        shutil.copy2(str(title_src), str(POST_DIR / "title-post.png"))
-        print(f"[Pipeline] Copied title-post.png to {POST_DIR}")
+        shutil.copy2(str(title_src), str(post_dir / "title-post.png"))
+        print(f"[Pipeline] Copied title-post.png to {post_dir}")
 
     # copy approved event images
     for rel_path in approved_images:
-        src = GENERATED_IMAGES_DIR / rel_path
+        src = images_dir / rel_path
         if src.exists():
-            dest = POST_DIR / Path(rel_path).name
+            dest = post_dir / Path(rel_path).name
             shutil.copy2(str(src), str(dest))
 
     # remove generated/ entirely
-    generated_root = GENERATED_IMAGES_DIR.parent  # generated/
+    generated_root = images_dir.parent  # generated/<city>/
     if generated_root.exists():
         shutil.rmtree(generated_root)
         print(f"[Pipeline] Cleaned up {generated_root}")
 
-    count = len(list(POST_DIR.iterdir()))
-    print(f"[Pipeline] {count} file(s) ready in {POST_DIR}")
+    count = len(list(post_dir.iterdir()))
+    print(f"[Pipeline] {count} file(s) ready in {post_dir}")
 
 
 async def morning_flow() -> None:
@@ -234,8 +305,9 @@ async def morning_flow() -> None:
     await process_today_events()
 
     # 4. Clean previous generated images so only today's run is in the poll
-    if GENERATED_IMAGES_DIR.exists():
-        shutil.rmtree(GENERATED_IMAGES_DIR)
+    gen_dir = _get_generated_images_dir()
+    if gen_dir.exists():
+        shutil.rmtree(gen_dir)
         print("[Pipeline] Cleaned previous generated images.")
 
     # 5. Generate event images only (sync Playwright — run outside async loop)
@@ -248,7 +320,7 @@ async def morning_flow() -> None:
     from .review_images import send_poll
 
     print("\n[Pipeline] Sending Discord review poll...")
-    await send_poll(GENERATED_IMAGES_DIR, TEMP_DIR)
+    await send_poll(_get_generated_images_dir(), _get_temp_dir())
     print("[Pipeline] Morning flow complete. Poll is open for voting.")
 
 
@@ -261,7 +333,7 @@ async def post_flow() -> None:
     from .review_images import collect_poll_results
 
     print("\n[Pipeline] Collecting Discord poll results...")
-    approved_images = await collect_poll_results(GENERATED_IMAGES_DIR, TEMP_DIR)
+    approved_images = await collect_poll_results(_get_generated_images_dir(), _get_temp_dir())
 
     if approved_images is None:
         print("[Pipeline] Upload was cancelled via Discord poll. Exiting.")
@@ -296,19 +368,21 @@ async def post_flow() -> None:
     from .instagram_workflow import run_instagram_workflow
     from .review_images import send_discord_message, send_discord_file
 
+    post_dir = _get_post_dir()
     post_images: list[str] = []
-    if POST_DIR.exists():
-        title_post = POST_DIR / "title-post.png"
+    if post_dir.exists():
+        title_post = post_dir / "title-post.png"
         if title_post.exists():
             post_images.append(str(title_post))
-        for f in sorted(POST_DIR.iterdir()):
+        for f in sorted(post_dir.iterdir()):
             if f.suffix.lower() in {".png", ".jpg", ".jpeg"} and f.name != "title-post.png":
                 post_images.append(str(f))
 
     if post_images:
+        cfg = get_config()
         today = datetime.now()
         formatted_date = f"{today.day}. {today.month}. {today.year}"
-        caption = f"Akce v Brně {formatted_date}\n\n#brno #party #akcebrno #kamvbrne"
+        caption = cfg.format_caption(formatted_date)
 
         print(f"\n[Pipeline] Uploading {len(post_images)} image(s) to Instagram...")
         await send_discord_message(
@@ -319,7 +393,7 @@ async def post_flow() -> None:
             await run_instagram_workflow(
                 image_paths=post_images,
                 caption=caption,
-                location="Brno, Czech Republic",
+                location=cfg.instagram.location,
             )
             print("[Pipeline] Instagram upload completed.")
             await send_discord_message(
@@ -331,7 +405,7 @@ async def post_flow() -> None:
                 f"❌ **Instagram upload failed:** {exc}"
             )
             # Send debug screenshot if one was captured
-            screenshot = TEMP_DIR / "debug-screenshot.png"
+            screenshot = _get_temp_dir() / "debug-screenshot.png"
             if screenshot.exists():
                 await send_discord_file(
                     screenshot, "🖥️ **Debug screenshot at time of failure:**"

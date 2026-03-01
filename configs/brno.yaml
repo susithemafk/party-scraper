@@ -1,0 +1,88 @@
+# ─────────────────────────────────────────────────────────────
+# Party Scraper – City Configuration: Brno
+# ─────────────────────────────────────────────────────────────
+# This file describes everything specific to the city of Brno.
+# Secrets (tokens, passwords) are NOT stored here — they stay
+# in .env.brno and are referenced by environment-variable name.
+#
+# Usage:
+#   python run_morning.py --config configs/brno.yaml
+# ─────────────────────────────────────────────────────────────
+
+# City-specific env file (relative to project root)
+env_file: .env.brno
+
+city:
+  name: brno
+  display_name: Brno
+  country: Czech Republic
+  # Text shown on the title-post image
+  title_text: "AKCE V BRNĚ"
+  title_alt: "Akce v Brně"
+
+instagram:
+  caption_template: "Akce v Brně {date}\n\n#brno #party #akcebrno #kamvbrne"
+  location: "Brno, Czech Republic"
+  session_dir: ig_sessions/brno
+  # Env var names — these are defined in .env.brno
+  email_env: INSTAGRAM_EMAIL
+  password_env: INSTAGRAM_PASSWORD
+
+discord:
+  # Env var names — these are defined in .env.brno
+  token_env: DISCORD_TOKEN
+  channel_id_env: TARGET_CHANNEL_ID
+  review_channel_id_env: REVIEW_CHANNEL_ID
+  reviewer_user_id_env: REVIEWER_USER_ID
+  review_timeout: 600
+
+venues:
+  # - title: Bobyhall
+  #   url: https://bobyhall.cz/program-bobyhall/
+  #   base_url: https://bobyhall.cz/
+  #   parser: bobyhall
+
+  # - title: Fraktal
+  #   url: https://ra.co/clubs/224489/events
+  #   base_url: https://ra.co/
+  #   parser: ra
+
+  # - title: pul.pit
+  #   url: https://ra.co/clubs/206733/events
+  #   base_url: https://ra.co/
+  #   parser: ra
+
+  # - title: Metro Music Bar
+  #   url: https://www.metromusic.cz/program/
+  #   base_url: https://www.metromusic.cz/
+  #   parser: metro
+
+  # - title: První patro
+  #   url: https://patrobrno.cz/
+  #   base_url: https://patrobrno.cz/
+  #   parser: patro
+
+  # - title: Perpetuum
+  #   url: https://www.perpetuumklub.cz/program/
+  #   base_url: https://www.perpetuumklub.cz/
+  #   parser: perpetuum
+
+  # - title: Fléda
+  #   url: https://www.fleda.cz/program/
+  #   base_url: https://www.fleda.cz/
+  #   parser: fleda
+
+  # - title: Sono Music Club
+  #   url: https://www.sono.cz/program/
+  #   base_url: https://www.sono.cz/
+  #   parser: sono
+
+  - title: Kabinet Múz
+    url: https://www.kabinetmuz.cz/program
+    base_url: https://www.kabinetmuz.cz/
+    parser: kabinet
+
+  # - title: Artbar
+  #   url: https://www.artbar.club/shows
+  #   base_url: https://www.artbar.club/
+  #   parser: artbar

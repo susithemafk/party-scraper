@@ -37,23 +37,42 @@ SKIP_UPLOAD_LABEL = "❌ Don't upload this post"
 
 
 def _load_config() -> dict:
+    """Build the Discord config dict.
+
+    Prefers values from the city config (if loaded), falling back to raw
+    environment variables for backwards compatibility.
+    """
     load_dotenv()
-    token = os.getenv("DISCORD_TOKEN")
-    channel_str = os.getenv("REVIEW_CHANNEL_ID") or os.getenv("TARGET_CHANNEL_ID")
-    reviewer_str = os.getenv("REVIEWER_USER_ID")
-    timeout = int(os.getenv("REVIEW_TIMEOUT", "600"))
+
+    # Try city config first
+    try:
+        from .config import get_config
+        cfg = get_config()
+        token = cfg.discord.token or os.getenv("DISCORD_TOKEN")
+        channel_id = cfg.discord.channel_id or int(
+            os.getenv("REVIEW_CHANNEL_ID") or os.getenv("TARGET_CHANNEL_ID") or "0"
+        )
+        reviewer_id = cfg.discord.reviewer_user_id
+        timeout = cfg.discord.review_timeout
+    except Exception:
+        token = os.getenv("DISCORD_TOKEN")
+        channel_str = os.getenv("REVIEW_CHANNEL_ID") or os.getenv("TARGET_CHANNEL_ID")
+        reviewer_str = os.getenv("REVIEWER_USER_ID")
+        timeout = int(os.getenv("REVIEW_TIMEOUT", "600"))
+        channel_id = int(channel_str) if channel_str else 0
+        reviewer_id = int(reviewer_str) if reviewer_str else None
 
     if not token:
         raise SystemExit("DISCORD_TOKEN is missing from the .env file.")
-    if not channel_str:
+    if not channel_id:
         raise SystemExit(
             "REVIEW_CHANNEL_ID or TARGET_CHANNEL_ID is required in .env."
         )
 
     return {
         "token": token,
-        "channel_id": int(channel_str),
-        "reviewer_id": int(reviewer_str) if reviewer_str else None,
+        "channel_id": channel_id,
+        "reviewer_id": reviewer_id,
         "timeout": max(timeout, 10),
     }
 

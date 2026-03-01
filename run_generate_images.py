@@ -1,14 +1,21 @@
 """Generate images from processed event data."""
+import argparse
+
+from src.config import init_config
 from src.pipeline import (
-    GENERATED_IMAGES_DIR,
-    PROCESSED_EVENTS_PATH,
     generate_images_from_processed,
     load_processed_events,
 )
 
 
 def main() -> None:
-    print("\n[STEP 4] Generating images from processed events...\n")
+    parser = argparse.ArgumentParser(description="Party Scraper — Generate Images")
+    parser.add_argument("--config", required=True, help="Path to city YAML config file")
+    args = parser.parse_args()
+
+    cfg = init_config(args.config)
+
+    print(f"\n[STEP 4] Generating images for {cfg.display_name}...\n")
     try:
         processed_events = load_processed_events()
     except FileNotFoundError as exc:
@@ -16,14 +23,13 @@ def main() -> None:
         print(exc)
         return
 
-    print(f"[STEP 4] Using processed snapshot: {PROCESSED_EVENTS_PATH}")
+    print(f"[STEP 4] Using processed data for {cfg.display_name}")
 
     # omit the title initially; it will be generated later after approval
     generated_files = generate_images_from_processed(
-        processed_events, GENERATED_IMAGES_DIR, generate_title=False
+        processed_events, generate_title=False
     )
     print(f"[STEP 4] Generated {len(generated_files)} image files")
-    print(f"[STEP 4] Images written to: {GENERATED_IMAGES_DIR}")
 
 
 if __name__ == "__main__":

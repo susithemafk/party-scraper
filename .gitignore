@@ -3,6 +3,7 @@ temp
 site-packages
 login_failed.png
 ig_session
+ig_sessions
 
 __pycache__/
 *.pyc
@@ -163,6 +164,7 @@ activemq-data/
 
 # Environments
 .env
+.env.*
 .envrc
 .venv
 env/

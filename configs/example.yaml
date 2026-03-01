@@ -1,0 +1,56 @@
+# ─────────────────────────────────────────────────────────────
+# Party Scraper – City Configuration Template
+# ─────────────────────────────────────────────────────────────
+# Copy this file, rename it to your city (e.g. prague.yaml),
+# and fill in the values.
+#
+# Secrets (tokens, passwords) are NOT stored here — they go
+# into a city-specific env file (e.g. .env.prague).
+#
+# Usage:
+#   python run_morning.py --config configs/your_city.yaml
+# ─────────────────────────────────────────────────────────────
+
+# City-specific env file (relative to project root).
+# If omitted, falls back to .env.<city_name>, then .env.
+env_file: .env.your_city
+
+city:
+  name: your_city            # lowercase, used for directory names
+  display_name: Your City    # human-readable name
+  country: Czech Republic
+  # Text shown on the title-post image (uppercase recommended)
+  title_text: "EVENTS IN YOUR CITY"
+  title_alt: "Events in Your City"
+
+instagram:
+  # Use {city} and {date} placeholders in the caption
+  caption_template: "Events in {city} {date}\n\n#yourcity #party"
+  location: "Your City, Country"
+  # Browser profile directory for this city's Instagram session
+  session_dir: ig_sessions/your_city
+  # Env var names — defined in your city's .env file.
+  # Every city can use the same simple names since each has its own .env.
+  email_env: INSTAGRAM_EMAIL
+  password_env: INSTAGRAM_PASSWORD
+
+discord:
+  # Env var names — defined in your city's .env file.
+  token_env: DISCORD_TOKEN
+  channel_id_env: TARGET_CHANNEL_ID
+  review_channel_id_env: REVIEW_CHANNEL_ID
+  reviewer_user_id_env: REVIEWER_USER_ID
+  review_timeout: 600        # seconds to wait for poll votes
+
+# List of venues to scrape. Each needs:
+#   title    – display name
+#   url      – the page to scrape
+#   base_url – homepage (visited first to look natural)
+#   parser   – one of: artbar, bobyhall, fleda, kabinet, metro,
+#              patro, perpetuum, ra, sono
+#              (or register your own via src/config.register_parser)
+venues:
+  - title: Example Venue
+    url: https://example.com/events
+    base_url: https://example.com/
+    parser: ra

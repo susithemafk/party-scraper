@@ -54,10 +54,20 @@ async def human_click(page: Page, selector_or_locator):
 
 
 async def run_instagram_workflow(image_paths: Optional[List[str]] = None, caption: Optional[str] = None, location: Optional[str] = None):
-    # Use environment variables for credentials
-    INSTAGRAM_EMAIL = os.getenv("INSTAGRAM_EMAIL", "your_username")
-    INSTAGRAM_PASSWORD = os.getenv("INSTAGRAM_PASSWORD", "your_password")
-    user_data_dir = "./ig_session"
+    # Prefer config-driven credentials; fall back to raw env vars
+    try:
+        from .config import get_config
+        cfg = get_config()
+        INSTAGRAM_EMAIL = cfg.instagram.email or os.getenv("INSTAGRAM_EMAIL", "your_username")
+        INSTAGRAM_PASSWORD = cfg.instagram.password or os.getenv("INSTAGRAM_PASSWORD", "your_password")
+        user_data_dir = cfg.instagram.session_dir
+    except Exception:
+        INSTAGRAM_EMAIL = os.getenv("INSTAGRAM_EMAIL", "your_username")
+        INSTAGRAM_PASSWORD = os.getenv("INSTAGRAM_PASSWORD", "your_password")
+        user_data_dir = "./ig_session"
+
+    # Ensure the session directory exists
+    os.makedirs(user_data_dir, exist_ok=True)
 
     async with async_playwright() as p:
         context = None
