@@ -1,6 +1,8 @@
 generated
 temp
 site-packages
+login_failed.png
+ig_session
 
 __pycache__/
 *.pyc
