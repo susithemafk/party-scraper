@@ -37,52 +37,52 @@ discord:
   review_timeout: 600
 
 venues:
-  # - title: Bobyhall
-  #   url: https://bobyhall.cz/program-bobyhall/
-  #   base_url: https://bobyhall.cz/
-  #   parser: bobyhall
+  - title: Bobyhall
+    url: https://bobyhall.cz/program-bobyhall/
+    base_url: https://bobyhall.cz/
+    parser: bobyhall
 
-  # - title: Fraktal
-  #   url: https://ra.co/clubs/224489/events
-  #   base_url: https://ra.co/
-  #   parser: ra
+  - title: Fraktal
+    url: https://ra.co/clubs/224489/events
+    base_url: https://ra.co/
+    parser: ra
 
-  # - title: pul.pit
-  #   url: https://ra.co/clubs/206733/events
-  #   base_url: https://ra.co/
-  #   parser: ra
+  - title: pul.pit
+    url: https://ra.co/clubs/206733/events
+    base_url: https://ra.co/
+    parser: ra
 
-  # - title: Metro Music Bar
-  #   url: https://www.metromusic.cz/program/
-  #   base_url: https://www.metromusic.cz/
-  #   parser: metro
+  - title: Metro Music Bar
+    url: https://www.metromusic.cz/program/
+    base_url: https://www.metromusic.cz/
+    parser: metro
 
-  # - title: První patro
-  #   url: https://patrobrno.cz/
-  #   base_url: https://patrobrno.cz/
-  #   parser: patro
+  - title: První patro
+    url: https://patrobrno.cz/
+    base_url: https://patrobrno.cz/
+    parser: patro
 
-  # - title: Perpetuum
-  #   url: https://www.perpetuumklub.cz/program/
-  #   base_url: https://www.perpetuumklub.cz/
-  #   parser: perpetuum
+  - title: Perpetuum
+    url: https://www.perpetuumklub.cz/program/
+    base_url: https://www.perpetuumklub.cz/
+    parser: perpetuum
 
-  # - title: Fléda
-  #   url: https://www.fleda.cz/program/
-  #   base_url: https://www.fleda.cz/
-  #   parser: fleda
+  - title: Fléda
+    url: https://www.fleda.cz/program/
+    base_url: https://www.fleda.cz/
+    parser: fleda
 
-  # - title: Sono Music Club
-  #   url: https://www.sono.cz/program/
-  #   base_url: https://www.sono.cz/
-  #   parser: sono
+  - title: Sono Music Club
+    url: https://www.sono.cz/program/
+    base_url: https://www.sono.cz/
+    parser: sono
 
   - title: Kabinet Múz
     url: https://www.kabinetmuz.cz/program
     base_url: https://www.kabinetmuz.cz/
     parser: kabinet
 
-  # - title: Artbar
-  #   url: https://www.artbar.club/shows
-  #   base_url: https://www.artbar.club/
-  #   parser: artbar
+  - title: Artbar
+    url: https://www.artbar.club/shows
+    base_url: https://www.artbar.club/
+    parser: artbar
