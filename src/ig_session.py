@@ -13,38 +13,10 @@ from playwright.async_api import async_playwright, Page
 from playwright_stealth import Stealth
 from typing import Optional
 
+from .browser_utils import human_click, human_delay, human_type
+
 
 headless = False
-
-async def human_delay(min_ms=500, max_ms=1500):
-    await asyncio.sleep(random.uniform(min_ms, max_ms) / 1000.0)
-
-
-async def human_type(page: Page, selector: str, text: str):
-    await page.wait_for_selector(selector)
-    await page.focus(selector)
-    for char in text:
-        await page.type(selector, char, delay=random.randint(50, 200))
-        if random.random() < 0.1:
-            await human_delay(300, 700)
-
-
-async def human_click(page: Page, selector_or_locator):
-    if isinstance(selector_or_locator, str):
-        locator = page.locator(selector_or_locator)
-    else:
-        locator = selector_or_locator
-
-    await locator.wait_for(state="visible")
-    box = await locator.bounding_box()
-    if box:
-        x = box['x'] + box['width'] * random.uniform(0.2, 0.8)
-        y = box['y'] + box['height'] * random.uniform(0.2, 0.8)
-        await page.mouse.move(x, y, steps=random.randint(5, 15))
-        await human_delay(100, 300)
-        await page.mouse.click(x, y)
-    else:
-        await locator.click()
 
 
 async def generate_ig_session(session_dir: str, email: str, password: str):
