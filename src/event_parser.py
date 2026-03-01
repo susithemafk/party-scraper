@@ -5,7 +5,7 @@ Replicates the useScraper hook logic from the frontend.
 """
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Callable
 
 from .parsers.artbar import artbar_parser
@@ -186,26 +186,33 @@ def parse_all_venues(html_results: Dict[str, Optional[str]], filter_past: bool =
     return all_events
 
 
-def filter_today_only(events: Dict[str, List[dict]]) -> Dict[str, List[dict]]:
+def filter_today_only(
+    events: Dict[str, List[dict]],
+    *,
+    target_date: Optional[str] = None,
+) -> Dict[str, List[dict]]:
     """
-    Filter events to only include those happening today.
-    Events without a date are excluded since we can't confirm they are today.
+    Filter events to only include those happening on *target_date*.
+    Defaults to tomorrow so that the post can be prepared a day ahead.
+    Events without a date are excluded since we can't confirm the date.
 
     Args:
         events: Dict mapping venue title to list of event dicts.
+        target_date: ISO date string (YYYY-MM-DD). Defaults to tomorrow.
 
     Returns:
-        Dict with only today's events per venue.
+        Dict with only the matching events per venue.
     """
-    today = datetime.now().strftime("%Y-%m-%d")
+    if target_date is None:
+        target_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
     filtered = {}
     for venue, venue_events in events.items():
-        today_events = [e for e in venue_events if e.get("date") == today]
-        filtered[venue] = today_events
-        if today_events:
-            print(f"[Filter] {venue}: {len(today_events)} event(s) today ({today})")
+        matched = [e for e in venue_events if e.get("date") == target_date]
+        filtered[venue] = matched
+        if matched:
+            print(f"[Filter] {venue}: {len(matched)} event(s) on {target_date}")
         else:
-            print(f"[Filter] {venue}: No events today ({today})")
+            print(f"[Filter] {venue}: No events on {target_date}")
     return filtered
 
 

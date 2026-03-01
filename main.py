@@ -1,7 +1,7 @@
 """Party Scraper
 ================
-Run the full pipeline: fetch, parse, AI-process, generate images,
-then launch the Discord review poll.
+Run the full pipeline end-to-end (both morning + post flows sequentially).
+For the two-phase workflow use ``run_morning.py`` and ``run_post.py`` instead.
 
 Usage:
     python main.py

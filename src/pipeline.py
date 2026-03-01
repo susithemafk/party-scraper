@@ -5,7 +5,7 @@ import asyncio
 import json
 import random
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
@@ -62,12 +62,14 @@ def load_fetched_events() -> Dict[str, list[dict[str, Any]]]:
 
 
 def build_today_events(
-    fetched_events: Optional[Dict[str, list[dict[str, Any]]]] = None
+    fetched_events: Optional[Dict[str, list[dict[str, Any]]]] = None,
+    *,
+    target_date: Optional[str] = None,
 ) -> Dict[str, list[dict[str, Any]]]:
-    """Filter cached events down to today's listings."""
+    """Filter cached events down to *target_date* (defaults to tomorrow)."""
     if fetched_events is None:
         fetched_events = load_fetched_events()
-    return filter_today_only(fetched_events)
+    return filter_today_only(fetched_events, target_date=target_date)
 
 
 async def process_today_events(
@@ -138,8 +140,8 @@ def generate_title_from_venues(
     venues_list = list(venues)
     venues_str = " | ".join(venues_list)
 
-    today = datetime.now()
-    date_display = f"{today.day:02d}. {today.month:02d}."
+    tomorrow = datetime.now() + timedelta(days=1)
+    date_display = f"{tomorrow.day:02d}. {tomorrow.month:02d}."
 
     # pick a random existing PNG from the approved venues as backdrop
     background_candidates: list[str] = []
@@ -216,61 +218,83 @@ def _finalize_post(approved_images: list[str]) -> None:
     print(f"[Pipeline] {count} file(s) ready in {POST_DIR}")
 
 
-async def ensure_main_flow() -> None:
-    """Run the full pipeline:
+async def morning_flow() -> None:
+    """Morning script: fetch, parse, process, generate images, send Discord poll.
 
+    The poll stays open until the post script collects it (next day at 00:01).
     """
-    # # 1. Setup
-    # run_setup_step()
+    # 1. Setup
+    run_setup_step()
 
-    # # 2. Fetch + parse
-    # await fetch_and_parse_events()
+    # 2. Fetch + parse
+    await fetch_and_parse_events()
 
-    # # 3. AI-process events.
-    # build_today_events()
-    # await process_today_events()
+    # 3. Filter tomorrow's events + AI-process
+    build_today_events()
+    await process_today_events()
 
-    # 4. Generate event images only (sync Playwright — run outside async loop)
-    # loop = asyncio.get_running_loop()
-    # await loop.run_in_executor(
-    #     None, partial(generate_images_from_processed, generate_title=False)
-    # )
+    # 4. Clean previous generated images so only today's run is in the poll
+    if GENERATED_IMAGES_DIR.exists():
+        shutil.rmtree(GENERATED_IMAGES_DIR)
+        print("[Pipeline] Cleaned previous generated images.")
 
-    # # 5. Send to Discord poll
-    # from .review_images import run_review
+    # 5. Generate event images only (sync Playwright — run outside async loop)
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(
+        None, partial(generate_images_from_processed, generate_title=False)
+    )
 
-    # print("\n[Pipeline] Launching Discord review poll...")
-    # approved_images = await run_review(GENERATED_IMAGES_DIR, TEMP_DIR)
+    # 5. Send Discord poll (exits immediately, poll stays open)
+    from .review_images import send_poll
 
-    # # 6. Generate title from approved venues only
-    # print("\n[Pipeline] Generating title image from approved venues...")
-    # if approved_images:
-    #     approved_venues = {
-    #         Path(p).parts[0] for p in approved_images if "/" in p
-    #     }
-    #     if approved_venues:
-    #         loop = asyncio.get_running_loop()
-    #         await loop.run_in_executor(
-    #             None,
-    #             partial(generate_title_from_venues, approved_venues),
-    #         )
-    #         print(
-    #             f"[Pipeline] Title generated for: "
-    #             f"{', '.join(sorted(approved_venues))}"
-    #         )
-    #     else:
-    #         print("[Pipeline] No venue-specific images approved; skipping title.")
-    # else:
-    #     print("[Pipeline] No images approved; skipping title generation.")
+    print("\n[Pipeline] Sending Discord review poll...")
+    await send_poll(GENERATED_IMAGES_DIR, TEMP_DIR)
+    print("[Pipeline] Morning flow complete. Poll is open for voting.")
 
-    # 7. Copy approved images + title to temp/post, clean up generated/
-    # print("\n[Pipeline] Finalizing post with approved images...")
-    # _finalize_post(approved_images)
 
-    # 8. Post to Instagram
+async def post_flow() -> None:
+    """Post script (00:01): collect poll results, generate title, finalize, upload.
+
+    If nobody voted on the poll, all images are approved automatically.
+    """
+    # 6. Collect poll results from Discord
+    from .review_images import collect_poll_results
+
+    print("\n[Pipeline] Collecting Discord poll results...")
+    approved_images = await collect_poll_results(GENERATED_IMAGES_DIR, TEMP_DIR)
+
+    if approved_images is None:
+        print("[Pipeline] Upload was cancelled via Discord poll. Exiting.")
+        return
+
+    # 7. Generate title from approved venues only
+    print("\n[Pipeline] Generating title image from approved venues...")
+    if approved_images:
+        approved_venues = {
+            Path(p).parts[0] for p in approved_images if "/" in p
+        }
+        if approved_venues:
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                None,
+                partial(generate_title_from_venues, approved_venues),
+            )
+            print(
+                f"[Pipeline] Title generated for: "
+                f"{', '.join(sorted(approved_venues))}"
+            )
+        else:
+            print("[Pipeline] No venue-specific images approved; skipping title.")
+    else:
+        print("[Pipeline] No images approved; skipping title generation.")
+
+    # 8. Copy approved images + title to temp/post, clean up generated/
+    print("\n[Pipeline] Finalizing post with approved images...")
+    _finalize_post(approved_images)
+
+    # 9. Post to Instagram
     from .instagram_workflow import run_instagram_workflow
 
-    # Collect all images in post order: title first, then events
     post_images: list[str] = []
     if POST_DIR.exists():
         title_post = POST_DIR / "title-post.png"
@@ -282,7 +306,7 @@ async def ensure_main_flow() -> None:
 
     if post_images:
         today = datetime.now()
-        formatted_date = f"{today.day}.{today.month}.{today.year}"
+        formatted_date = f"{today.day}. {today.month}. {today.year}"
         caption = f"Akce v Brně {formatted_date}\n\n#brno #party #akcebrno #kamvbrne"
 
         print(f"\n[Pipeline] Uploading {len(post_images)} image(s) to Instagram...")
@@ -293,3 +317,9 @@ async def ensure_main_flow() -> None:
         )
     else:
         print("[Pipeline] No images in post folder; skipping Instagram upload.")
+
+
+async def ensure_main_flow() -> None:
+    """Run the full pipeline end-to-end (legacy, kept for backwards compat)."""
+    await morning_flow()
+    await post_flow()
