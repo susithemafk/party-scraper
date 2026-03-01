@@ -27,7 +27,13 @@ command: `crontab -e`
 content:
 
 ```bash
-0 8 * * * cd /home/ubuntu/party-scraper && /home/ubuntu/party-scraper/venv/bin/python /home/ubuntu/party-scraper/run_morning.py --config ./configs/brno.yaml >> /home/ubuntu/party-scraper/run_morning.log 2>&1
+0 8 * * * /home/ubuntu/party-scraper/run.sh brno morning
 
-1 0 * * * cd /home/ubuntu/party-scraper && /home/ubuntu/party-scraper/venv/bin/python /home/ubuntu/party-scraper/run_post.py --config ./configs/brno.yaml >> /home/ubuntu/party-scraper/run_post.log 2>&1
+1 0 * * * /home/ubuntu/party-scraper/run.sh brno post
+```
+
+##
+
+```bash
+scp -i "C:\Users\msuch\.ssh\oracle-cloud.key" -r "C:\Users\msuch\Desktop\programko\party-scraper\ig_sessions" ubuntu@130.61.72.167:~/party-scraper/
 ```
