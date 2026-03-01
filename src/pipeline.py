@@ -366,7 +366,7 @@ async def post_flow() -> None:
 
     # 9. Post to Instagram
     from .instagram_workflow import run_instagram_workflow
-    from .review_images import send_discord_message, send_discord_file
+    from .discord_utils import send_discord_message, send_discord_file
 
     post_dir = _get_post_dir()
     post_images: list[str] = []

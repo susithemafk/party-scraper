@@ -1,9 +1,12 @@
 ##
 
-we have two scripts `run_morning.py` and `run_post.py`.
+we have two scripts `run_morning.py` and `run_post.py` and `run_get_ig_session.py`.
 
 first one scrapes websites and sends todays events to discord
 second one takes survey results and posts desired posts to instagram.
+third one gets instagram session for a given city.
+
+other files in root folder are for running only parts of the program, debugging, tes
 
 ##
 
