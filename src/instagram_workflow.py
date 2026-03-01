@@ -81,6 +81,7 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
         await human_delay(2000, 4000)
 
         if not just_open_the_browser:
+          try:
             # step 1: submit cookies
             print("Step 1: Handling cookies...")
             try:
@@ -241,6 +242,17 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
                 print(f"Could not find Share button: {e}")
 
             print("Workflow completed.")
+          except Exception as exc:
+            # Save a debug screenshot before re-raising
+            screenshot_path = Path(__file__).parent.parent / "temp" / "debug-screenshot.png"
+            screenshot_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                await page.screenshot(path=str(screenshot_path), full_page=True)
+                print(f"[Instagram] Debug screenshot saved to {screenshot_path}")
+            except Exception:
+                print("[Instagram] Could not save debug screenshot.")
+            await browser.close()
+            raise exc
 
         await human_delay(30000, 35000)
         await browser.close()

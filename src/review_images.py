@@ -513,3 +513,40 @@ async def send_discord_message(text: str) -> None:
         return
 
     await done.wait()
+
+
+async def send_discord_file(file_path: str | Path, message: str = "") -> None:
+    """Connect to Discord, send a file (with optional text) to the review channel."""
+    path = Path(file_path)
+    if not path.exists():
+        print(f"[Discord] File not found, skipping: {path}")
+        return
+
+    config = _load_config()
+    done = asyncio.Event()
+
+    intents = discord.Intents(guilds=True, messages=True)
+    client = discord.Client(intents=intents)
+
+    @client.event
+    async def on_ready() -> None:
+        try:
+            channel = client.get_channel(config["channel_id"])
+            if channel is None:
+                channel = await client.fetch_channel(config["channel_id"])
+            if isinstance(channel, discord.TextChannel):
+                await channel.send(
+                    message,
+                    file=discord.File(str(path), filename=path.name),
+                )
+        finally:
+            await client.close()
+            done.set()
+
+    try:
+        await client.start(config["token"])
+    except discord.LoginFailure:
+        print("[Discord] Could not send file — login failed.")
+        return
+
+    await done.wait()

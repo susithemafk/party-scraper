@@ -294,7 +294,7 @@ async def post_flow() -> None:
 
     # 9. Post to Instagram
     from .instagram_workflow import run_instagram_workflow
-    from .review_images import send_discord_message
+    from .review_images import send_discord_message, send_discord_file
 
     post_images: list[str] = []
     if POST_DIR.exists():
@@ -330,6 +330,12 @@ async def post_flow() -> None:
             await send_discord_message(
                 f"❌ **Instagram upload failed:** {exc}"
             )
+            # Send debug screenshot if one was captured
+            screenshot = TEMP_DIR / "debug-screenshot.png"
+            if screenshot.exists():
+                await send_discord_file(
+                    screenshot, "🖥️ **Debug screenshot at time of failure:**"
+                )
     else:
         print("[Pipeline] No images in post folder; skipping Instagram upload.")
         await send_discord_message(
