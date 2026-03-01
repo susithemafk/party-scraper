@@ -13,7 +13,7 @@ env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
 just_open_the_browser = False
-headless = False
+headless = True
 
 
 

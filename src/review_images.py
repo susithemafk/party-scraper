@@ -478,3 +478,38 @@ async def _run_poll_legacy(
     )
 
     return approved
+
+
+# ── utility: send a one-off message to the review channel ────────────────────
+
+
+async def send_discord_message(text: str) -> None:
+    """Connect to Discord, send a single message to the review channel, disconnect.
+
+    Used by the pipeline to post status updates (e.g. Instagram upload result).
+    """
+    config = _load_config()
+    done = asyncio.Event()
+
+    intents = discord.Intents(guilds=True, messages=True)
+    client = discord.Client(intents=intents)
+
+    @client.event
+    async def on_ready() -> None:
+        try:
+            channel = client.get_channel(config["channel_id"])
+            if channel is None:
+                channel = await client.fetch_channel(config["channel_id"])
+            if isinstance(channel, discord.TextChannel):
+                await channel.send(text)
+        finally:
+            await client.close()
+            done.set()
+
+    try:
+        await client.start(config["token"])
+    except discord.LoginFailure:
+        print("[Discord] Could not send message — login failed.")
+        return
+
+    await done.wait()

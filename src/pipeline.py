@@ -294,6 +294,7 @@ async def post_flow() -> None:
 
     # 9. Post to Instagram
     from .instagram_workflow import run_instagram_workflow
+    from .review_images import send_discord_message
 
     post_images: list[str] = []
     if POST_DIR.exists():
@@ -310,13 +311,30 @@ async def post_flow() -> None:
         caption = f"Akce v Brně {formatted_date}\n\n#brno #party #akcebrno #kamvbrne"
 
         print(f"\n[Pipeline] Uploading {len(post_images)} image(s) to Instagram...")
-        await run_instagram_workflow(
-            image_paths=post_images,
-            caption=caption,
-            location="Brno, Czech Republic",
+        await send_discord_message(
+            f"⏳ **Uploading {len(post_images)} image(s) to Instagram...**"
         )
+
+        try:
+            await run_instagram_workflow(
+                image_paths=post_images,
+                caption=caption,
+                location="Brno, Czech Republic",
+            )
+            print("[Pipeline] Instagram upload completed.")
+            await send_discord_message(
+                f"✅ **Instagram upload completed!** ({len(post_images)} images)"
+            )
+        except Exception as exc:
+            print(f"[Pipeline] Instagram upload FAILED: {exc}")
+            await send_discord_message(
+                f"❌ **Instagram upload failed:** {exc}"
+            )
     else:
         print("[Pipeline] No images in post folder; skipping Instagram upload.")
+        await send_discord_message(
+            "⚠️ **No images in post folder** — skipping Instagram upload."
+        )
 
 
 async def ensure_main_flow() -> None:
