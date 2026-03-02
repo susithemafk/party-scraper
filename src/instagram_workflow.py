@@ -46,11 +46,13 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
                     "--disable-dev-shm-usage",     # Využije /tmp místo sdílené paměti
-                    # Vypne GPU akceleraci (nutné na VPS)
                     "--disable-gpu",
                     "--font-render-hinting=none",  # Fix pro renderování textu
                     "--disable-web-security",
                     "--lang=en-US",
+                    "--disable-infobars",
+                    "--window-position=0,0",
+                    "--ignore-certificate-errors",
                 ],
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
                 viewport={'width': 1280, 'height': 720},
@@ -149,6 +151,19 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
             except Exception:
                 print("Post-login prompt not found or already handled.")
 
+            # extra step: simulate some actions
+            # --- SIMULACE LIDSKÉHO PROHLÍŽENÍ ---
+            print("Warm-up: Scrolling feed...")
+            for _ in range(random.randint(2, 4)):
+                await page.mouse.wheel(0, random.randint(300, 700))
+                await human_delay(1000, 3000)
+
+            # Občas klikneme na "Explore" nebo "Home" jen tak
+            if random.random() > 0.5:
+                print("Random action: checking notifications or home...")
+                await page.get_by_label("Notifications").click()
+                await human_delay(2000, 4000)
+
             # step 6: click "New post"
             print("Step 6: Clicking 'New post' button...")
             try:
@@ -241,9 +256,14 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
             try:
                 share_button = page.get_by_role(
                     "button", name=re.compile(r"Share|Sdílet", re.IGNORECASE))
+
+                await share_button.hover()
+                await human_delay(2000, 5000)
                 await human_click(page, share_button)
                 print("Post shared successfully!")
                 await human_delay(5000, 8000)
+                await page.mouse.wheel(0, -500) # scroll nahoru
+
             except Exception as e:
                 print(f"Could not find Share button: {e}")
 
