@@ -21,6 +21,7 @@ from .event_parser import (
 from .fetcher import fetch_all_venues
 from .image_generator import generate_event_images
 from .setup import run_setup
+from .ig_post import upload_media
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -388,28 +389,28 @@ async def post_flow() -> None:
             f"⏳ **Uploading {len(post_images)} image(s) to Instagram...**"
         )
 
-        # TODO TADY NAIMPLEMENTOVAT NOVOU IG WORKFLOW
-        # try:
-        #     await run_instagram_workflow(
-        #         image_paths=post_images,
-        #         caption=caption,
-        #         location=cfg.instagram.location,
-        #     )
-        #     print("[Pipeline] Instagram upload completed.")
-        #     await send_discord_message(
-        #         f"✅ **Instagram upload completed!** ({len(post_images)} images)"
-        #     )
-        # except Exception as exc:
-        #     print(f"[Pipeline] Instagram upload FAILED: {exc}")
-        #     await send_discord_message(
-        #         f"❌ **Instagram upload failed:** {exc}"
-        #     )
-        #     # Send debug screenshot if one was captured
-        #     screenshot = _get_temp_dir() / "debug-screenshot.png"
-        #     if screenshot.exists():
-        #         await send_discord_file(
-        #             screenshot, "🖥️ **Debug screenshot at time of failure:**"
-        #         )
+        try:
+            # TODO: Add location
+            print(f"[Pipeline] images: \n{chr(10).join(post_images)}")
+            await upload_media(
+                image_sources=post_images,
+                caption=caption,
+            )
+            print("[Pipeline] Instagram upload completed.")
+            await send_discord_message(
+                f"✅ **Instagram upload completed!** ({len(post_images)} images)"
+            )
+        except Exception as exc:
+            print(f"[Pipeline] Instagram upload FAILED: {exc}")
+            await send_discord_message(
+                f"❌ **Instagram upload failed:** {exc}"
+            )
+            # Send debug screenshot if one was captured
+            screenshot = _get_temp_dir() / "debug-screenshot.png"
+            if screenshot.exists():
+                await send_discord_file(
+                    screenshot, "🖥️ **Debug screenshot at time of failure:**"
+                )
     else:
         print("[Pipeline] No images in post folder; skipping Instagram upload.")
         await send_discord_message(
