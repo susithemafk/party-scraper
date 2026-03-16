@@ -96,18 +96,6 @@ class VenueConfig:
 class InstagramConfig:
     caption_template: str = "Events in {city} {date}"
     location: str = ""
-    session_dir: str = "ig_session"  # per-city browser profile directory
-    email_env: str = "INSTAGRAM_EMAIL"
-    password_env: str = "INSTAGRAM_PASSWORD"
-
-    @property
-    def email(self) -> str:
-        return os.getenv(self.email_env, "")
-
-    @property
-    def password(self) -> str:
-        return os.getenv(self.password_env, "")
-
 
 @dataclass
 class DiscordConfig:
@@ -228,9 +216,6 @@ def load_config(path: str | Path) -> CityConfig:
     instagram = InstagramConfig(
         caption_template=ig_raw.get("caption_template", InstagramConfig.caption_template),
         location=ig_raw.get("location", ""),
-        session_dir=ig_raw.get("session_dir", f"ig_sessions/{city_raw.get('name', 'default')}"),
-        email_env=ig_raw.get("email_env", "INSTAGRAM_EMAIL"),
-        password_env=ig_raw.get("password_env", "INSTAGRAM_PASSWORD"),
     )
 
     discord_cfg = DiscordConfig(

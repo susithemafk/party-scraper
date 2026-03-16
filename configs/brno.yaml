@@ -23,10 +23,6 @@ city:
 instagram:
   caption_template: "Akce v Brně {date}\n\n#brno #party #akcebrno #kamvbrne"
   location: "Brno, Czech Republic"
-  session_dir: ig_sessions/brno
-  # Env var names — these are defined in .env.brno
-  email_env: INSTAGRAM_EMAIL
-  password_env: INSTAGRAM_PASSWORD
 
 discord:
   # Env var names — these are defined in .env.brno

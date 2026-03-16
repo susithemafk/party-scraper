@@ -27,12 +27,6 @@ instagram:
   # Use {city} and {date} placeholders in the caption
   caption_template: "Events in {city} {date}\n\n#yourcity #party"
   location: "Your City, Country"
-  # Browser profile directory for this city's Instagram session
-  session_dir: ig_sessions/your_city
-  # Env var names — defined in your city's .env file.
-  # Every city can use the same simple names since each has its own .env.
-  email_env: INSTAGRAM_EMAIL
-  password_env: INSTAGRAM_PASSWORD
 
 discord:
   # Env var names — defined in your city's .env file.
