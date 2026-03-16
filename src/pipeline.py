@@ -21,7 +21,6 @@ from .event_parser import (
 from .fetcher import fetch_all_venues
 from .image_generator import generate_event_images
 from .setup import run_setup
-from .ig_post import upload_media
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -379,6 +378,8 @@ async def post_flow() -> None:
                 post_images.append(str(f))
 
     if post_images:
+        from .ig_post import upload_media
+
         cfg = get_config()
         today = datetime.now()
         formatted_date = f"{today.day}. {today.month}. {today.year}"

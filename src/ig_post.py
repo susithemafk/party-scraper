@@ -5,12 +5,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
-from .config import get_config
+from src.config import get_config
 
-config = get_config()
-
-ACCESS_TOKEN = config.instagram.meta_access_token
-IG_USER_ID = config.instagram.meta_user_id
 _single_temp_host = os.getenv("TEMP_IMAGE_HOST_UPLOAD_URL")
 _multiple_temp_hosts = os.getenv("TEMP_IMAGE_HOST_UPLOAD_URLS")
 
@@ -41,6 +37,25 @@ IMAGE_URLS = [
 CAPTION = "Carousel post from Python 🚀"
 
 BASE_URL = "https://graph.facebook.com/v25.0"
+
+
+def _require_meta_credentials() -> tuple[str, str]:
+    access_token = os.getenv("META_ACCESS_TOKEN", "").strip()
+    ig_user_id = os.getenv("META_USER_ID", "").strip()
+
+    try:
+        cfg = get_config()
+        access_token = (cfg.instagram.meta_access_token or access_token).strip()
+        ig_user_id = (cfg.instagram.meta_user_id or ig_user_id).strip()
+    except RuntimeError:
+        pass
+
+    if not access_token or not ig_user_id:
+        raise RuntimeError(
+            "Missing META_ACCESS_TOKEN or META_USER_ID in config/environment variables."
+        )
+
+    return access_token, ig_user_id
 
 # Checks if the img source is an HTTP URL or local image
 def is_http_url(value):
@@ -178,21 +193,22 @@ async def resolve_image_source(image_source):
 
 # Creates an image container for the given image URL and returns the container ID
 async def create_image_container(image_url, caption=""):
-    url = f"{BASE_URL}/{IG_USER_ID}/media"
+    access_token, ig_user_id = _require_meta_credentials()
+    url = f"{BASE_URL}/{ig_user_id}/media"
 
     # For single image posts
     if caption:
         payload = {
             "image_url": image_url,
             "caption": caption,
-            "access_token": ACCESS_TOKEN,
+            "access_token": access_token,
         }
     else:
         # For carousel items
         payload = {
         "image_url": image_url,
         "is_carousel_item": "true",
-        "access_token": ACCESS_TOKEN,
+        "access_token": access_token,
         }
 
     def _create_container():
@@ -208,13 +224,14 @@ async def create_image_container(image_url, caption=""):
 
 # Creates a carousel container with the given child media IDs and caption
 async def create_carousel_container(children_ids, caption):
-    url = f"{BASE_URL}/{IG_USER_ID}/media"
+    access_token, ig_user_id = _require_meta_credentials()
+    url = f"{BASE_URL}/{ig_user_id}/media"
 
     payload = {
         "media_type": "CAROUSEL",
         "children": ",".join(children_ids),
         "caption": caption,
-        "access_token": ACCESS_TOKEN
+        "access_token": access_token
     }
 
     def _create_container():
@@ -230,11 +247,12 @@ async def create_carousel_container(children_ids, caption):
 
 # Publishes the media (image or carousel) to Instagram
 async def publish_media(container_id):
-    url = f"{BASE_URL}/{IG_USER_ID}/media_publish"
+    access_token, ig_user_id = _require_meta_credentials()
+    url = f"{BASE_URL}/{ig_user_id}/media_publish"
 
     payload = {
         "creation_id": container_id,
-        "access_token": ACCESS_TOKEN
+        "access_token": access_token
     }
 
     def _publish():
@@ -281,13 +299,11 @@ async def upload_media(image_sources, caption):
 
 
 async def main():
-
-    if not ACCESS_TOKEN or not IG_USER_ID:
-        raise RuntimeError("Missing ACCESS_TOKEN or IG_USER_ID in environment variables.")
+    _require_meta_credentials()
 
     if not IMAGE_URLS:
         raise RuntimeError("No image sources provided in IMAGE_URLS environment variable.")
-    
+
     await upload_multiple_images(IMAGE_URLS, CAPTION)
 
 
