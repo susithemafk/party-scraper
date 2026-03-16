@@ -14,6 +14,21 @@ other files in root folder are for running only parts of the program, debugging,
 - configuration is done via `configs/` directory
 - each configuration has its own `.env.city` file with discord room and instagram tokens.
 
+## How it works under the hooooood
+
+main functionlity is implemented in `src/pipeline.py`
+
+### morning script
+
+1. scrapes club website with all events for that club, usually `/akce`.
+2. gets URL and date of each event
+3. filters only tomorrow's events
+4. uses crawl4ai to scrape today's events details
+
+### post script
+
+// TODO
+
 ## Run locally
 
 use `run-locally.sh` script
