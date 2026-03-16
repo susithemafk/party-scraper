@@ -52,6 +52,8 @@ def check_env_file(project_root: str) -> bool:
         print("[Setup] Creating template .env file...")
         with open(env_path, "w") as f:
             f.write("GEMINI_API_KEY=your_api_key_here\n")
+            f.write("META_ACCESS_TOKEN=\n")
+            f.write("META_USER_ID=\n")
         print(f"[Setup] Please edit {env_path} and add your GEMINI_API_KEY")
         return False
 

@@ -27,6 +27,8 @@ instagram:
   # Use {city} and {date} placeholders in the caption
   caption_template: "Events in {city} {date}\n\n#yourcity #party"
   location: "Your City, Country"
+  meta_access_token_env: META_ACCESS_TOKEN
+  meta_user_id_env: META_USER_ID
 
 discord:
   # Env var names — defined in your city's .env file.

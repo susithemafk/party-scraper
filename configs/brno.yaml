@@ -23,6 +23,8 @@ city:
 instagram:
   caption_template: "Akce v Brně {date}\n\n#brno #party #akcebrno #kamvbrne"
   location: "Brno, Czech Republic"
+  meta_access_token_env: META_ACCESS_TOKEN
+  meta_user_id_env: META_USER_ID
 
 discord:
   # Env var names — these are defined in .env.brno

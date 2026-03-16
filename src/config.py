@@ -96,6 +96,16 @@ class VenueConfig:
 class InstagramConfig:
     caption_template: str = "Events in {city} {date}"
     location: str = ""
+    meta_access_token_env: str = "META_ACCESS_TOKEN"
+    meta_user_id_env: str = "META_USER_ID"
+
+    @property
+    def meta_access_token(self) -> str:
+        return os.getenv(self.meta_access_token_env, "")
+
+    @property
+    def meta_user_id(self) -> str:
+        return os.getenv(self.meta_user_id_env, "")
 
 @dataclass
 class DiscordConfig:
@@ -216,6 +226,8 @@ def load_config(path: str | Path) -> CityConfig:
     instagram = InstagramConfig(
         caption_template=ig_raw.get("caption_template", InstagramConfig.caption_template),
         location=ig_raw.get("location", ""),
+        meta_access_token_env=ig_raw.get("meta_access_token_env", "META_ACCESS_TOKEN"),
+        meta_user_id_env=ig_raw.get("meta_user_id_env", "META_USER_ID"),
     )
 
     discord_cfg = DiscordConfig(
