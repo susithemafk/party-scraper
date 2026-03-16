@@ -14,6 +14,7 @@ from playwright_stealth import Stealth
 from typing import Optional
 
 from .browser_utils import human_click, human_delay, human_type
+from .browser_settings import launch_browser_context
 
 
 headless = False
@@ -28,29 +29,10 @@ async def generate_ig_session(session_dir: str, email: str, password: str):
         context = None
         page = None
         try:
-            context = await p.chromium.launch_persistent_context(
-                user_data_dir=session_dir,
-                headless=headless,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                    "--font-render-hinting=none",
-                    "--disable-web-security",
-                    "--lang=en-US",
-                ],
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                viewport={'width': 1280, 'height': 720},
-                locale="en-US",
-                timezone_id="Europe/Prague",
-            )
+            context = await launch_browser_context(user_data_dir=session_dir, headless=headless)
 
             page = await context.new_page()
-            await Stealth().apply_stealth_async(page)
-
-            print("[IG Session] Navigating to Instagram...")
+            print("Navigating to Instagram...")
             await page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
             await human_delay(3000, 5000)
 
@@ -78,7 +60,8 @@ async def generate_ig_session(session_dir: str, email: str, password: str):
                         print("[IG Session] Cookies accepted.")
                         await human_delay(1000, 2000)
                 except Exception:
-                    print("[IG Session] Cookie banner not found or already accepted.")
+                    print(
+                        "[IG Session] Cookie banner not found or already accepted.")
 
                 # Step 2: Find login form
                 print("[IG Session] Step 2: Finding login form...")
@@ -104,7 +87,8 @@ async def generate_ig_session(session_dir: str, email: str, password: str):
                 await human_delay(2000, 4000)
                 continue_button = page.get_by_text("Continue", exact=True)
                 if await continue_button.is_visible():
-                    print("[IG Session] Step 4.5.1: 'Continue' button detected. Clicking...")
+                    print(
+                        "[IG Session] Step 4.5.1: 'Continue' button detected. Clicking...")
                     await human_click(page, continue_button)
                     await human_delay(2000, 3000)
 
@@ -116,11 +100,13 @@ async def generate_ig_session(session_dir: str, email: str, password: str):
                     re_login_button = page.get_by_role(
                         "button", name=re.compile(r"Log [iI]n", re.IGNORECASE))
                     if not await re_login_button.is_visible():
-                        re_login_button = page.get_by_text("Log in", exact=True)
+                        re_login_button = page.get_by_text(
+                            "Log in", exact=True)
                     await human_click(page, re_login_button)
                     await human_delay(3000, 5000)
             except Exception as e:
-                print(f"[IG Session] Info: No 'Continue' check needed or failed: {e}")
+                print(
+                    f"[IG Session] Info: No 'Continue' check needed or failed: {e}")
 
             # Step 5: Dismiss "Not now" prompt
             print("[IG Session] Step 5: Handling post-login prompts...")
@@ -142,14 +128,38 @@ async def generate_ig_session(session_dir: str, email: str, password: str):
                 or await page.get_by_text("For you").is_visible()
             )
             if final_check:
-                print(f"[IG Session] SUCCESS — session saved to: {session_dir}")
+                print(
+                    f"[IG Session] SUCCESS — session saved to: {session_dir}")
             else:
-                print("[IG Session] WARNING — login may have failed. Check the session directory.")
+                print(
+                    "[IG Session] WARNING — login may have failed. Check the session directory.")
                 if page is not None:
                     await page.screenshot(path="login_failed.png")
                     print("[IG Session] Screenshot saved to login_failed.png")
 
         finally:
-            if context is not None:
-                await context.close()
-                print("[IG Session] Browser closed.")
+            # --- MANUÁLNÍ FÁZE ---
+            print("\n" + "="*50)
+            print("!!! NYNÍ MŮŽEŠ OVLÁDAT PROHLÍŽEČ MANUÁLNĚ !!!")
+            print("1. Scrolluj feedem, klikej, dělej aktivitu alespoň 2-3 minuty.")
+            print("2. Až budeš hotov, jednoduše ZAVŘI OKNO PROHLÍŽEČE KŘÍŽKEM (X).")
+            print("3. Skript to pozná a korektně uloží session na disk.")
+            print("="*50 + "\n")
+
+            try:
+                # Místo čekání "navždy" čekáme, dokud uživatel nezavře stránku
+                await page.wait_for_event("close")
+                print("\n[IG Session] Okno bylo zavřeno uživatelem.")
+            except Exception as e:
+                pass
+            finally:
+                print("[IG Session] Zabezpečuji uložení dat a končím...")
+                try:
+                    if context is not None:
+                        await context.close()
+                except Exception:
+                    # Ignorujeme chybu, pokud se kontext už zavřel (např. tím křížkem)
+                    pass
+            # if context is not None:
+            #     await context.close()
+            #     print("[IG Session] Browser closed.")

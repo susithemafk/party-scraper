@@ -7,7 +7,8 @@ from playwright_stealth import Stealth
 from dotenv import load_dotenv
 from pathlib import Path
 from typing import List, Optional
-
+from .discord_utils import send_discord_file, send_discord_message
+from .browser_settings import launch_browser_context
 from .browser_utils import human_click, human_delay, human_type
 
 # Load environment variables from .env in the project root
@@ -22,8 +23,10 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
     try:
         from .config import get_config
         cfg = get_config()
-        INSTAGRAM_EMAIL = cfg.instagram.email or os.getenv("INSTAGRAM_EMAIL", "your_username")
-        INSTAGRAM_PASSWORD = cfg.instagram.password or os.getenv("INSTAGRAM_PASSWORD", "your_password")
+        INSTAGRAM_EMAIL = cfg.instagram.email or os.getenv(
+            "INSTAGRAM_EMAIL", "your_username")
+        INSTAGRAM_PASSWORD = cfg.instagram.password or os.getenv(
+            "INSTAGRAM_PASSWORD", "your_password")
         user_data_dir = cfg.instagram.session_dir
     except Exception:
         INSTAGRAM_EMAIL = os.getenv("INSTAGRAM_EMAIL", "your_username")
@@ -37,28 +40,7 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
         context = None
         page = None
         try:
-            context = await p.chromium.launch_persistent_context(
-                user_data_dir=user_data_dir,
-                headless=headless,
-                # Tady jsou klíčové parametry pro stabilitu na Linuxu
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-dev-shm-usage",     # Využije /tmp místo sdílené paměti
-                    "--disable-gpu",
-                    "--font-render-hinting=none",  # Fix pro renderování textu
-                    "--disable-web-security",
-                    "--lang=en-US",
-                    "--disable-infobars",
-                    "--window-position=0,0",
-                    "--ignore-certificate-errors",
-                ],
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                viewport={'width': 1280, 'height': 720},
-                locale="en-US",
-                timezone_id="Europe/Prague"
-            )
+            context = await launch_browser_context(user_data_dir=user_data_dir, headless=headless)
 
             page = await context.new_page()
             await Stealth().apply_stealth_async(page)
@@ -262,7 +244,7 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
                 await human_click(page, share_button)
                 print("Post shared successfully!")
                 await human_delay(5000, 8000)
-                await page.mouse.wheel(0, -500) # scroll nahoru
+                await page.mouse.wheel(0, -500)  # scroll nahoru
 
             except Exception as e:
                 print(f"Could not find Share button: {e}")
@@ -279,21 +261,18 @@ async def run_instagram_workflow(image_paths: Optional[List[str]] = None, captio
                     await page.screenshot(path=str(screenshot_path), full_page=True)
                     print(
                         f"[Instagram] Debug screenshot saved to {screenshot_path}")
+                    # Send the screenshot to Discord
+                    await send_discord_message("🚨 **Instagram Workflow Exception**")
+                    await send_discord_file(
+                        screenshot_path, "🖼️ **Debug screenshot at time of failure:**"
+                    )
             except Exception:
-                print("[Instagram] Could not save debug screenshot.")
+                print("[Instagram] Could not save debug screenshot or send to Discord.")
             raise exc
         finally:
             if context is not None:
                 try:
                     await context.close()
                 except Exception as close_exc:
-                    print(f"[Instagram] Failed to close browser context cleanly: {close_exc}")
-
-
-if __name__ == "__main__":
-    # Ensure policy for Windows if needed (as seen in backend/main.py)
-    import platform
-    if platform.system() == 'Windows':
-        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-
-    asyncio.run(run_instagram_workflow())
+                    print(
+                        f"[Instagram] Failed to close browser context cleanly: {close_exc}")
