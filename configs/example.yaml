@@ -27,6 +27,12 @@ instagram:
   # Use {city} and {date} placeholders in the caption
   caption_template: "Events in {city} {date}\n\n#yourcity #party"
   location: "Your City, Country"
+  # Optional override. If omitted, ig_post.py uses IG_GRAPH_API_BASE_URL from .env
+  # and then falls back to https://graph.facebook.com/v25.0.
+  # graph_api_base_url: "https://graph.facebook.com/v25.0"
+  # Optional image sources for standalone ig_post.py runs.
+  # Leave empty if you run uploads through the pipeline.
+  image_urls: []
   meta_access_token_env: META_ACCESS_TOKEN
   meta_user_id_env: META_USER_ID
 
