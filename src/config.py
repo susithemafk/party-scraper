@@ -96,16 +96,27 @@ class VenueConfig:
 class InstagramConfig:
     caption_template: str = "Events in {city} {date}"
     location: str = ""
+    graph_api_base_url: str = ""
+    image_urls: List[str] = field(default_factory=list)
     meta_access_token_env: str = "META_ACCESS_TOKEN"
     meta_user_id_env: str = "META_USER_ID"
+    temp_image_host_upload_urls: List[str] = field(default_factory=lambda: [
+        "https://tmpfiles.org/api/v1/upload",
+        "https://0x0.st",
+    ])
+    temp_image_host_user_agent: str = "brno-events-ig-uploader/1.0 (local script)"
+    request_timeout_seconds: int = 60
 
     @property
     def meta_access_token(self) -> str:
-        return os.getenv(self.meta_access_token_env, "")
+        val = os.getenv(self.meta_access_token_env) or ""
+        return val.strip()
 
     @property
-    def meta_user_id(self) -> str:
-        return os.getenv(self.meta_user_id_env, "")
+    def meta_user_id(self) -> int:
+        val = os.getenv(self.meta_user_id_env) or ""
+        return int(val.strip()) if val.strip().isdigit() else 0
+
 
 @dataclass
 class DiscordConfig:
@@ -121,7 +132,8 @@ class DiscordConfig:
 
     @property
     def channel_id(self) -> int:
-        val = os.getenv(self.review_channel_id_env) or os.getenv(self.channel_id_env) or "0"
+        val = os.getenv(self.review_channel_id_env) or os.getenv(
+            self.channel_id_env) or "0"
         return int(val)
 
     @property
@@ -223,24 +235,59 @@ def load_config(path: str | Path) -> CityConfig:
     dc_raw = raw.get("discord", {})
     venues_raw = raw.get("venues", [])
 
+    temp_host_urls_raw = ig_raw.get("temp_image_host_upload_urls")
+    if isinstance(temp_host_urls_raw, str):
+        temp_host_urls = [
+            host.strip() for host in temp_host_urls_raw.split(",") if host.strip()
+        ]
+    elif isinstance(temp_host_urls_raw, list):
+        temp_host_urls = [str(host).strip()
+                          for host in temp_host_urls_raw if str(host).strip()]
+    else:
+        temp_host_urls = []
+
+    image_urls_raw = ig_raw.get("image_urls")
+    if isinstance(image_urls_raw, str):
+        image_urls = [img.strip() for img in image_urls_raw.split(",") if img.strip()]
+    elif isinstance(image_urls_raw, list):
+        image_urls = [str(img).strip() for img in image_urls_raw if str(img).strip()]
+    else:
+        image_urls = []
+
     instagram = InstagramConfig(
-        caption_template=ig_raw.get("caption_template", InstagramConfig.caption_template),
+        caption_template=ig_raw.get(
+            "caption_template", InstagramConfig.caption_template),
         location=ig_raw.get("location", ""),
-        meta_access_token_env=ig_raw.get("meta_access_token_env", "META_ACCESS_TOKEN"),
+        graph_api_base_url=ig_raw.get("graph_api_base_url", ""),
+        image_urls=image_urls,
+        meta_access_token_env=ig_raw.get(
+            "meta_access_token_env", "META_ACCESS_TOKEN"),
         meta_user_id_env=ig_raw.get("meta_user_id_env", "META_USER_ID"),
+        temp_image_host_upload_urls=temp_host_urls or [
+            "https://tmpfiles.org/api/v1/upload",
+            "https://0x0.st",
+        ],
+        temp_image_host_user_agent=ig_raw.get(
+            "temp_image_host_user_agent",
+            "brno-events-ig-uploader/1.0 (local script)",
+        ),
+        request_timeout_seconds=int(ig_raw.get("request_timeout_seconds", 60)),
     )
 
     discord_cfg = DiscordConfig(
         token_env=dc_raw.get("token_env", "DISCORD_TOKEN"),
         channel_id_env=dc_raw.get("channel_id_env", "TARGET_CHANNEL_ID"),
-        review_channel_id_env=dc_raw.get("review_channel_id_env", "REVIEW_CHANNEL_ID"),
-        reviewer_user_id_env=dc_raw.get("reviewer_user_id_env", "REVIEWER_USER_ID"),
+        review_channel_id_env=dc_raw.get(
+            "review_channel_id_env", "REVIEW_CHANNEL_ID"),
+        reviewer_user_id_env=dc_raw.get(
+            "reviewer_user_id_env", "REVIEWER_USER_ID"),
         review_timeout=dc_raw.get("review_timeout", 600),
     )
 
     return CityConfig(
         name=city_raw.get("name", "default"),
-        display_name=city_raw.get("display_name", city_raw.get("name", "Default")),
+        display_name=city_raw.get(
+            "display_name", city_raw.get("name", "Default")),
         country=city_raw.get("country", "Czech Republic"),
         title_text=city_raw.get("title_text", ""),
         title_alt=city_raw.get("title_alt", ""),
@@ -261,7 +308,8 @@ def init_config(path: str | Path) -> CityConfig:
     """Load the config from *path* and store it as the global active config."""
     global _active_config
     _active_config = load_config(path)
-    print(f"[Config] Loaded city config: {_active_config.display_name} ({path})")
+    print(
+        f"[Config] Loaded city config: {_active_config.display_name} ({path})")
     return _active_config
 
 
