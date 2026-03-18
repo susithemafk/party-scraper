@@ -24,12 +24,12 @@ logging.basicConfig(
 async def process_event(crawler: AsyncWebCrawler, url: str, known_date: Optional[str] = None) -> Optional[EventDetail]:
     """
     Process a single event URL: crawl the page and extract details via Gemini.
-    
+
     Args:
         crawler: An active AsyncWebCrawler instance.
         url: The event page URL.
         known_date: Optional pre-known date to backfill if extraction misses it.
-        
+
     Returns:
         EventDetail or None on failure.
     """
@@ -45,7 +45,8 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: Optional
             a_type = action.get("type")
             if a_type == "wait":
                 duration = action.get("duration", 1)
-                js_code_blocks.append(f"await new Promise(r => setTimeout(r, {duration * 1000}));")
+                js_code_blocks.append(
+                    f"await new Promise(r => setTimeout(r, {duration * 1000}));")
             elif a_type == "click":
                 selector = action.get("selector")
                 if selector:
@@ -81,22 +82,40 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: Optional
         if field_name == "image_url":
             if not actions_data:
                 wait_for = f"css:{selector}"
-            js_code_blocks.append("await new Promise(r => setTimeout(r, 2000));")
+            js_code_blocks.append(
+                "await new Promise(r => setTimeout(r, 2000));")
             extract_image_js = rf"""
             return (() => {{
                 let elements = document.querySelectorAll({json.dumps(selector)});
                 let candidates = [];
                 for (let el of elements) {{
                     let url = null;
-                    if (el.tagName === 'IMG') {{ url = el.src || el.getAttribute('data-src'); }}
-                    else {{
+
+                    // 1. Try IMG tag
+                    if (el.tagName === 'IMG') {{
+                        url = el.src || el.getAttribute('data-src');
+                    }} else {{
+                        // 2. Try window.getComputedStyle
                         let style = window.getComputedStyle(el);
                         let bg = style.backgroundImage;
-                        if (bg && bg !== 'none') {{ let match = bg.match(/url\(["']?(.*?)["']?\)/); if (match) url = match[1]; }}
+
+                        // 3. Fallback: Check inline style attribute directly if computed failed
+                        if (!bg || bg === 'none') {{
+                            bg = el.style.backgroundImage || el.getAttribute('style') || '';
+                        }}
+
+                        if (bg && bg !== 'none') {{
+                            let match = bg.match(/url\(["']?(.*?)["']?\)/);
+                            if (match) url = match[1];
+                        }}
+
+                        // 4. Fallback: Data attributes
                         if (!url) url = el.getAttribute('data-src') || el.getAttribute('data-original');
                     }}
+
                     if (url) {{
-                        url = url.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+                        // Clean up the URL string
+                        url = url.replace(/&quot;/g, '').replace(/&amp;/g, '&').replace(/"/g, '');
                         try {{ candidates.push(new URL(url, document.baseURI).href); }} catch(e) {{}}
                     }}
                 }}
@@ -106,6 +125,7 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: Optional
                 return candidates.sort((a, b) => b.length - a.length)[0];
             }})();
             """
+
             js_code_blocks.append(extract_image_js)
         else:
             extract_text_js = rf"""
@@ -130,7 +150,8 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: Optional
         logging.warning(f"No content found for {url}")
         return None
 
-    logging.info(f"Extracted content length: {len(result.markdown)} chars. Sending to Gemini...")
+    logging.info(
+        f"Extracted content length: {len(result.markdown)} chars. Sending to Gemini...")
     event_detail = extract_event_detail(result.markdown)
 
     if hasattr(result, 'js_execution_result') and result.js_execution_result:
@@ -164,11 +185,11 @@ async def process_all_events(input_data: Dict[str, List[dict]], output_path: str
     """
     Process all events for all venues using crawl4ai + Gemini extraction.
     Saves results incrementally to output_path.
-    
+
     Args:
         input_data: Dict mapping venue name to list of {url, date} dicts.
         output_path: Path to save the processed-events.json file.
-        
+
     Returns:
         Dict mapping venue name to list of EventDetail dicts.
     """
@@ -204,10 +225,12 @@ async def process_all_events(input_data: Dict[str, List[dict]], output_path: str
                         venue_results.append(detail.model_dump())
                         print(f"    -> Extracted: {detail.title}")
                     else:
-                        venue_results.append({"url": url, "error": "Extraction failed"})
+                        venue_results.append(
+                            {"url": url, "error": "Extraction failed"})
                         print(f"    -> FAILED: No data extracted")
                 except asyncio.TimeoutError:
-                    venue_results.append({"url": url, "error": "Timeout after 60s"})
+                    venue_results.append(
+                        {"url": url, "error": "Timeout after 60s"})
                     print(f"    -> TIMEOUT")
                 except Exception as e:
                     venue_results.append({"url": url, "error": str(e)})
