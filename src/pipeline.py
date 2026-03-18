@@ -246,12 +246,13 @@ def generate_title_from_venues(
 
 
 def _finalize_post(approved_images: list[str]) -> None:
-    """Copy approved images + title to temp/post and clean up generated/.
+    """Copy approved images + title to temp/post.
 
-    - Moves ``generated/images/html/`` to ``temp/html/`` for archival.
     - Copies each approved image into ``temp/post/``.
     - Copies ``title-post.png`` into ``temp/post/`` (placed first).
-    - Removes the entire ``generated/`` directory.
+
+    ``generated/`` cleanup is intentionally handled *after* a successful
+    Instagram upload so post retries can still reassemble the same approved set.
     """
     post_dir = _get_post_dir()
     images_dir = _get_generated_images_dir()
@@ -280,14 +281,16 @@ def _finalize_post(approved_images: list[str]) -> None:
             dest = post_dir / Path(rel_path).name
             shutil.copy2(str(src), str(dest))
 
-    # remove generated/ entirely
-    generated_root = images_dir.parent  # generated/<city>/
+    count = len(list(post_dir.iterdir()))
+    print(f"[Pipeline] {count} file(s) ready in {post_dir}")
+
+
+def _cleanup_generated_images() -> None:
+    """Delete generated/<city>/ after a successful post upload."""
+    generated_root = _get_generated_images_dir().parent  # generated/<city>/
     if generated_root.exists():
         shutil.rmtree(generated_root)
         print(f"[Pipeline] Cleaned up {generated_root}")
-
-    count = len(list(post_dir.iterdir()))
-    print(f"[Pipeline] {count} file(s) ready in {post_dir}")
 
 
 async def morning_flow() -> None:
@@ -396,6 +399,7 @@ async def post_flow() -> None:
                 image_sources=post_images,
                 caption=caption,
             )
+            _cleanup_generated_images()
             print("[Pipeline] Instagram upload completed.")
             await send_discord_message(
                 f"✅ **Instagram upload completed!** ({len(post_images)} images)"
