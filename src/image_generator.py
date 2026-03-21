@@ -212,7 +212,8 @@ def generate_event_images(
         venues_str = " | ".join(all_venues)
 
         today = datetime.now()
-        date_display = f"{today.day:02d}. {today.month:02d}."
+        yesterday = today.replace(day=today.day - 1)
+        date_display = f"{yesterday.day:02d}. {yesterday.month:02d}."
 
         background_html = ""
         if background_candidates:
