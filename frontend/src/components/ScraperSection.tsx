@@ -11,6 +11,8 @@ interface ScraperSectionProps {
     onLoading?: (isLoading: boolean) => void
     onlyToday: boolean
     setOnlyToday: (val: boolean) => void
+    weekStart: string
+    weekEnd: string
     trigger?: number
     expandTrigger?: number
     collapseTrigger?: number
@@ -18,13 +20,15 @@ interface ScraperSectionProps {
 
 export const ScraperSection: React.FC<ScraperSectionProps> = ({
     title,
-    defaultUrl, 
+    defaultUrl,
     baseUrl,
     parserFunc,
     onResult,
     onLoading,
     onlyToday,
     setOnlyToday,
+    weekStart,
+    weekEnd,
     trigger,
     expandTrigger,
     collapseTrigger
@@ -46,7 +50,7 @@ export const ScraperSection: React.FC<ScraperSectionProps> = ({
         handleFetchAndParse,
         handleManualParse,
         handleCopy,
-    } = useScraper(parserFunc, defaultUrl, baseUrl, onlyToday, setOnlyToday)
+    } = useScraper(parserFunc, defaultUrl, baseUrl, onlyToday, setOnlyToday, weekStart, weekEnd)
 
     // Automatically open if loading starts or if results are found
     // useEffect(() => {

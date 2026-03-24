@@ -224,3 +224,8 @@ __marimo__/
 .streamlit/secrets.toml
 
 node_modules/
+
+studio_data/generated_images/*.jpg
+studio_data/*.json
+studio_data_export/*/*.jpg
+studio_data_export/!.gitkeep

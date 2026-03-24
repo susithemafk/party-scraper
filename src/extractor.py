@@ -31,7 +31,6 @@ def extract_event_detail(content: str) -> Optional[EventDetail]:
 
     {{
         "title": "Name of the event",
-        "date": "Date of the event in RRRR-MM-DD format. 'sobota 14. února' will be '2026-02-14'",
         "time": "HH:MM",
         "place": "Venue name",
         "price": "Price info (optional)",

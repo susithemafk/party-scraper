@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 import sys
@@ -12,10 +12,12 @@ import json
 import httpx
 import base64
 import uuid
-from instagrapi import Client
+import shutil
+from pathlib import Path
+from datetime import datetime
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
-import random 
+import random
 
 # --- 1. KRITICKÁ ČÁST PRO WINDOWS ---
 # Musí to být úplně nahoře, dříve než se vytvoří jakákoliv async smyčka
@@ -28,13 +30,20 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Importy s lepším ošetřením chyb
 try:
     from src.scraper import process_event, process_batch
-    from src.instagram_workflow import run_instagram_workflow
     from crawl4ai import AsyncWebCrawler
 except ImportError as e:
     print(f"FATAL: Import failed: {e}")
     sys.exit(1)
 
 app = FastAPI(title="Party Scraper API")
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+STUDIO_DATA_DIR = PROJECT_ROOT / "studio_data"
+STUDIO_DATA_DIR.mkdir(exist_ok=True)
+STUDIO_IMAGES_DIR = STUDIO_DATA_DIR / "generated_images"
+STUDIO_IMAGES_DIR.mkdir(exist_ok=True)
+STUDIO_DATA_EXPORT_DIR = PROJECT_ROOT / "studio_data_export"
+STUDIO_DATA_EXPORT_DIR.mkdir(exist_ok=True)
 
 # --- 2. CORS NASTAVENÍ (ponecháno, je správně) ---
 app.add_middleware(
@@ -51,147 +60,180 @@ class ScrapeRequest(BaseModel):
     date: Optional[str] = None
 
 
-class IgLoginRequest(BaseModel):
-    email: Optional[str] = None
-    password: Optional[str] = None
-    session_id: Optional[str] = None
-    verification_code: Optional[str] = None
+class StudioSaveRequest(BaseModel):
+    data: Dict[str, List[dict]]
 
 
-class IgPostRequest(BaseModel):
-    images_base64: List[str]
-    caption: str
-    location_name: Optional[str] = None
+class StudioGeneratedImageRequest(BaseModel):
+    image_base64: str
+    filename_hint: Optional[str] = None
 
 
-SESSION_PATH = "ig_session.json"
-cl = Client()
+class StudioExportImageItem(BaseModel):
+    date: str
+    order: int
+    image_path: str
 
 
-def login_to_instagram(email=None, password=None, session_id=None, verification_code=None):
-    """Přihlásí se k IG pomocí emailu/hesla, session_id nebo vyřeší challenge."""
-    global cl
-    print(f"[IG-DEBUG] Starting login process. Session_id: {bool(session_id)}, Code: {bool(verification_code)}")
-
-    # 1. Challenge / 2FA (ponecháno beze změny)
-    if verification_code:
-        try:
-            cl.challenge_resolve(verification_code)
-            cl.dump_settings(SESSION_PATH)
-            return "success"
-        except Exception as e:
-            if email and password:
-                try:
-                    cl.login(email, password, verification_code=verification_code)
-                    cl.dump_settings(SESSION_PATH)
-                    return "success"
-                except Exception as e2:
-                    return f"Verification failed: {e2}"
-            return str(e)
-
-    # 2. Login přes Session ID
-    if session_id:
-        try:
-            from urllib.parse import unquote
-            # Očištění session_id (odstranění uvozovek a URL kódování)
-            session_id = unquote(session_id).strip('"').strip("'")
-
-            # Reset klienta pro čistý start
-            cl = Client()
-
-            # Extrakce user_id ze session_id (formát: user_id:token:...)
-            extracted_user_id = session_id.split(":")[0] if ":" in session_id else None
-
-            if not extracted_user_id:
-                return "Invalid Session ID format (missing user_id part)"
-
-            # Nastavíme cookies manuálně - toto nevyvolává síťový požadavek
-            cl.set_settings({}) # Inicializace prázdného nastavení
-            cl.set_device({
-                "app_version": "311.0.0.32.118", # Modernější verze
-                "android_version": 29,
-                "android_release": "10.0",
-                "dpi": "480dpi",
-                "resolution": "1080x1920",
-                "manufacturer": "Samsung",
-                "device": "SM-G973F",
-                "model": "beyond1",
-                "cpu": "exynos9820",
-                "version_code": "544155160",
-            })
-
-            # Vložíme session přímo do cookie jaru
-            cl.login_by_sessionid(session_id)
-
-            # Okamžitý test, zda nás IG vidí jako přihlášené
-            try:
-                cl.get_timeline_feed()
-                print(f"[IG-DEBUG] Session ID login successful! User ID: {cl.user_id}")
-                cl.dump_settings(SESSION_PATH)
-                return "success"
-            except Exception as e:
-                print(f"[IG-DEBUG] Session validation failed: {e}")
-                return "Session ID is expired or invalid"
-
-        except Exception as e:
-            print(f"[IG-DEBUG] SessionID Error: {type(e).__name__}: {e}")
-            if "JSONDecodeError" in str(e) or "column 1" in str(e):
-                return "Instagram blocked your IP or Session. Try refreshing Session ID in your browser."
-            return str(e)
-
-    # 3. Načtení ze souboru
-    if os.path.exists(SESSION_PATH):
-        try:
-            cl.load_settings(SESSION_PATH)
-            # Malý test validity
-            cl.get_timeline_feed()
-            return "success"
-        except:
-            if os.path.exists(SESSION_PATH): os.remove(SESSION_PATH)
-
-    # 4. Email + Heslo
-    if email and password:
-        try:
-            cl.login(email, password)
-            cl.dump_settings(SESSION_PATH)
-            return "success"
-        except Exception as e:
-            from instagrapi.exceptions import ChallengeRequired, TwoFactorRequired
-            if isinstance(e, (ChallengeRequired, TwoFactorRequired)) or "checkpoint" in str(e).lower():
-                return "challenge_required"
-            return str(e)
-
-    return "Missing credentials"
-
+class StudioExportImagesRequest(BaseModel):
+    items: List[StudioExportImageItem]
 
 @app.get("/")
 async def root():
     return {"message": "Party Scraper API is running."}
 
 
-@app.post("/ig-login")
-async def ig_login(request: IgLoginRequest):
-    print(f"\n[API] Received /ig-login request")
-    result = await asyncio.to_thread(
-        login_to_instagram,
-        email=request.email,
-        password=request.password,
-        session_id=request.session_id,
-        verification_code=request.verification_code
-    )
+def _latest_studio_file() -> Optional[Path]:
+    files = sorted(STUDIO_DATA_DIR.glob("final-events-*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not files:
+        return None
+    return files[0]
 
-    if result == "success":
+
+@app.get("/studio/latest")
+async def studio_latest():
+    latest = _latest_studio_file()
+    if not latest:
+        raise HTTPException(status_code=404, detail="No saved studio JSON found")
+
+    try:
+        with latest.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {
+            "filename": latest.name,
+            "updated_at": datetime.fromtimestamp(latest.stat().st_mtime).isoformat(),
+            "data": data,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load studio JSON: {str(e)}")
+
+
+@app.post("/studio/save")
+async def studio_save(request: StudioSaveRequest):
+    timestamp = datetime.now().isoformat().replace(":", "-").replace(".", "-")
+    target = STUDIO_DATA_DIR / f"final-events-{timestamp}.json"
+
+    try:
+        with target.open("w", encoding="utf-8") as f:
+            json.dump(request.data, f, ensure_ascii=False, indent=2)
+        return {"saved": True, "filename": target.name, "path": str(target)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save studio JSON: {str(e)}")
+
+
+@app.get("/studio/local-image")
+async def studio_local_image(path: str):
+    if not path:
+        raise HTTPException(status_code=400, detail="Image path is required")
+
+    requested = Path(path)
+    candidate = requested if requested.is_absolute() else (PROJECT_ROOT / requested)
+
+    try:
+        resolved = candidate.resolve()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image path")
+
+    if not resolved.exists() or not resolved.is_file():
+        raise HTTPException(status_code=404, detail="Image file not found")
+
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".avif"}
+    if resolved.suffix.lower() not in allowed_extensions:
+        raise HTTPException(status_code=400, detail="Unsupported image format")
+
+    try:
+        return FileResponse(str(resolved))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read image: {str(e)}")
+
+
+@app.post("/studio/save-generated-image")
+async def studio_save_generated_image(request: StudioGeneratedImageRequest):
+    if not request.image_base64:
+        raise HTTPException(status_code=400, detail="image_base64 is required")
+
+    try:
+        payload = request.image_base64
+        if "," in payload:
+            payload = payload.split(",", 1)[1]
+
+        image_bytes = base64.b64decode(payload)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 image payload")
+
+    safe_hint = (request.filename_hint or "event").strip().replace(" ", "-")
+    safe_hint = "".join(ch for ch in safe_hint if ch.isalnum() or ch in ("-", "_"))[:40] or "event"
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    filename = f"{safe_hint}-{timestamp}.jpg"
+    target = STUDIO_IMAGES_DIR / filename
+
+    try:
+        with target.open("wb") as f:
+            f.write(image_bytes)
+
+        relative_path = str(target.relative_to(PROJECT_ROOT)).replace("\\", "/")
+        return {
+            "saved": True,
+            "filename": filename,
+            "path": relative_path,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save generated image: {str(e)}")
+
+
+def _resolve_export_source_path(image_path: str) -> Path:
+    if not image_path:
+        raise HTTPException(status_code=400, detail="image_path is required")
+
+    trimmed = image_path.strip()
+    if trimmed.startswith("data:") or trimmed.startswith("http://") or trimmed.startswith("https://"):
+        raise HTTPException(status_code=400, detail="Only local image paths are supported for export")
+
+    requested = Path(trimmed)
+    candidate = requested if requested.is_absolute() else (PROJECT_ROOT / requested)
+
+    try:
+        resolved = candidate.resolve()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid local image path")
+
+    if not resolved.exists() or not resolved.is_file():
+        raise HTTPException(status_code=404, detail=f"Image file not found: {trimmed}")
+
+    return resolved
+
+
+@app.post("/studio/export-images")
+async def studio_export_images(request: StudioExportImagesRequest):
+    if not request.items:
+        raise HTTPException(status_code=400, detail="No export items provided")
+
+    saved_files: List[str] = []
+
+    for item in request.items:
+        date_folder = (item.date or "unknown-day").strip()
+        safe_date_folder = "".join(ch for ch in date_folder if ch.isalnum() or ch in ("-", "_")) or "unknown-day"
+        order_number = item.order if item.order > 0 else 1
+
+        day_dir = STUDIO_DATA_EXPORT_DIR / safe_date_folder
+        day_dir.mkdir(parents=True, exist_ok=True)
+
+        target_file = day_dir / f"{order_number}.jpg"
+        source_file = _resolve_export_source_path(item.image_path)
+
         try:
-            account_info = cl.account_info()
-            return {"status": "success", "message": "Logged in", "user": account_info.dict()}
-        except Exception:
-            return {"status": "success", "message": "Logged in (no info)", "user": {"email": request.email}}
+            shutil.copy2(source_file, target_file)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to save JPG for {item.date}/{order_number}: {str(e)}")
 
-    if result == "challenge_required":
-        return {"status": "challenge", "message": "Instagram requested verification code. Please check your email/phone."}
+        saved_files.append(str(target_file.relative_to(PROJECT_ROOT)).replace("\\", "/"))
 
-    raise HTTPException(status_code=401, detail=f"Login failed: {result}")
-
+    return {
+        "saved": True,
+        "saved_count": len(saved_files),
+        "folder": str(STUDIO_DATA_EXPORT_DIR.relative_to(PROJECT_ROOT)).replace("\\", "/"),
+        "files": saved_files,
+    }
 
 @app.post("/scrape-batch")
 async def scrape_batch(request: dict):
@@ -206,7 +248,6 @@ async def scrape_batch(request: dict):
         import traceback
         print(f"BATCH ERROR:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.post("/scrape-batch-stream")
 async def scrape_batch_stream(request: dict):
@@ -231,6 +272,8 @@ async def scrape_batch_stream(request: dict):
                         )
                         if detail:
                             res = detail.model_dump()
+                            res["url"] = url
+                            res["date"] = date
                             # Wrap in venue key for grouped format
                             yield json.dumps({venue: [res]}) + "\n"
                         else:
@@ -263,7 +306,7 @@ async def proxy_image(url: str):
 @app.post("/fetch-html")
 async def fetch_html(request: dict):
     url = request.get("url")
-    base_url = request.get("base_url") 
+    base_url = request.get("base_url")
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
 
@@ -274,8 +317,8 @@ async def fetch_html(request: dict):
         async with Stealth().use_async(async_playwright()) as p:
             # Spustíme prohlížeč
             browser = await p.chromium.launch(
-                headless=False, # Pokud tě stále blokují, zkus False
-                args=["--no-sandbox"] 
+                headless=True, # Pokud tě stále blokují, zkus False
+                args=["--no-sandbox"]
             )
 
             # 2. Vytvoření kontextu s reálnými parametry
@@ -328,66 +371,10 @@ async def fetch_html(request: dict):
 def health_check():
     return {"status": "ok"}
 
-
-@app.post("/ig-publish")
-async def ig_publish(request: IgPostRequest):
-    print(f"\n[API] Received /ig-publish request")
-
-    # Create temp directory for images
-    temp_dir = os.path.join(os.getcwd(), "temp_instagram_images")
-    if not os.path.exists(temp_dir):
-        os.makedirs(temp_dir)
-
-    image_paths = []
-    try:
-        # Save base64 images to temporary files
-        for i, img_b64 in enumerate(request.images_base64):
-            # Strip metadata if present (e.g., "data:image/jpeg;base64,")
-            if "," in img_b64:
-                img_b64 = img_b64.split(",")[1]
-
-            img_data = base64.b64decode(img_b64)
-            file_name = f"upload_{uuid.uuid4()}_{i}.jpg"
-            file_path = os.path.join(temp_dir, file_name)
-
-            with open(file_path, "wb") as f:
-                f.write(img_data)
-
-            image_paths.append(file_path)
-
-        print(f"Saved {len(image_paths)} images to {temp_dir}")
-
-        # Run the playwright workflow
-        # Note: This runs in the background or blocks until finished.
-        # Since it's a long process, you might want to consider a task queue,
-        # but for now we'll run it directly.
-        await run_instagram_workflow(
-            image_paths=image_paths,
-            caption=request.caption,
-            location=request.location_name
-        )
-
-        return {"status": "success", "message": "Post published successfully via browser automation"}
-
-    except Exception as e:
-        import traceback
-        print(f"[IG-PUBLISH ERROR]: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Cleanup temporary files
-        for path in image_paths:
-            try:
-                if os.path.exists(path):
-                    os.remove(path)
-                    print(f"Cleaned up: {path}")
-            except Exception as e:
-                print(f"Error cleaning up {path}: {e}")
-
-
 if __name__ == "__main__":
     import uvicorn
     # --- 4. POZOR NA RELOAD NA WINDOWS ---
     # reload=True na Windows často rozbíjí Event Loop Policy pro Playwright.
     # Pro ladění scrapingu doporučuji reload=False.
-    # Také se ujisti, že název souboru odpovídá (zde předpokládám backend-main.py)
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    # Spouštíme přímo app objekt, aby se vždy načetla tato instance se všemi /studio routami.
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)

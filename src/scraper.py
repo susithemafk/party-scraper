@@ -179,9 +179,7 @@ async def process_event(crawler: AsyncWebCrawler, url: str, known_date: Optional
     if event_detail:
         logging.info(f"Successfully extracted: {event_detail.title}")
         # Backfill date if missing and known
-        if not event_detail.date and known_date:
-            logging.info(f"Backfilling missing date with: {known_date}")
-            event_detail.date = known_date
+        event_detail.date = known_date
         return event_detail
     else:
         logging.error(f"Failed to extract details for {url}")
@@ -211,6 +209,8 @@ async def process_batch(input_data: dict) -> dict:
                 detail = await process_event(crawler, url, known_date)
 
                 if detail:
+                    detail.url = url
+                    detail.date = known_date
                     # Enforce venue consistency if missing
                     if not detail.place:
                         detail.place = venue

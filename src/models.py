@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 class EventDetail(BaseModel):
     title: str = Field(..., description="Název akce/párty")
+    url: Optional[str] = Field(None, description="Zdrojová URL stránky akce")
     date: Optional[str] = Field(
         None, description="Datum akce ve formátu RRRR-MM-DD")
     time: Optional[str] = Field(None, description="Čas začátku akce")

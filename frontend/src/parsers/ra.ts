@@ -24,8 +24,8 @@ export const raParser: ParserFunc = (html) => {
     const eventCards = doc.querySelectorAll('[data-testid="event-listing-card"]')
 
     eventCards.forEach((card) => {
-        const titleEl = card.querySelector('[data-pw-test-id="event-title"] a') || card.querySelector('h3 a')
-        const dateEl = card.querySelector('span[color="secondary"]') || card.querySelector('.Text-sc-wks9sf-0.dhcUaC')
+        const titleEl = card.querySelector('[data-pw-test-id="event-title"] a') || card.querySelector("h3 a")
+        const dateEl = card.querySelector('span[color="secondary"]') || card.querySelector(".Text-sc-wks9sf-0.dhcUaC")
 
         if (!titleEl) return
 
@@ -58,6 +58,8 @@ export const raParser: ParserFunc = (html) => {
             url,
         })
     })
+
+    console.log("Parsed items:", items)
 
     return items
 }

@@ -27,6 +27,4 @@ async def main():
     print(f"\nProcessing complete. Results saved to {output_file}")
 
 if __name__ == "__main__":
-    if os.name == 'nt':
-        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     asyncio.run(main())

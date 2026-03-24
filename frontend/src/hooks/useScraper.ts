@@ -7,7 +7,9 @@ export const useScraper = (
     initialUrl: string = "",
     baseUrl: string = "",
     onlyToday: boolean,
-    setOnlyToday: (val: boolean) => void
+    setOnlyToday: (val: boolean) => void,
+    weekStart?: string,
+    weekEnd?: string,
 ) => {
     const [url, setUrl] = useState<string>(initialUrl)
     const [htmlInput, setHtmlInput] = useState<string>("")
@@ -17,8 +19,8 @@ export const useScraper = (
     const [error, setError] = useState<string | null>(null)
 
     // Filter settings
-    const [filterPast, setFilterPast] = useState<boolean>(true)
-    const [maxResults, setMaxResults] = useState<number>(4)
+    const [filterPast, setFilterPast] = useState<boolean>(false)
+    const [maxResults, setMaxResults] = useState<number>(0)
 
     const result = useMemo(() => {
         if (!rawResult) return null
@@ -27,16 +29,16 @@ export const useScraper = (
         const today = new Date().toISOString().split("T")[0]
 
         if (filterPast) {
-            processed = processed.filter(item => !item.date || item.date >= today)
+            processed = processed.filter((item) => !item.date || item.date >= today)
         }
 
         if (onlyToday) {
-            processed = processed.filter(item => item.date === today)
+            processed = processed.filter((item) => item.date === today)
         }
 
         // Deduplicate by URL
         const seenUrls = new Set<string>()
-        processed = processed.filter(item => {
+        processed = processed.filter((item) => {
             if (!item.url) return true // Keep items without URL
             if (seenUrls.has(item.url)) return false
             seenUrls.add(item.url)
@@ -54,8 +56,15 @@ export const useScraper = (
             processed = processed.slice(0, maxResults)
         }
 
+        const ws = weekStart ?? ""
+        const we = weekEnd ?? ""
+
+        if (ws && we) {
+            processed = processed.filter((item) => !!item.date && item.date >= ws && item.date <= we)
+        }
+
         return processed
-    }, [rawResult, filterPast, onlyToday, maxResults])
+    }, [rawResult, filterPast, onlyToday, maxResults, weekStart, weekEnd])
 
     const handleFetchAndParse = useCallback(async () => {
         if (!url.trim()) return
