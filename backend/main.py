@@ -15,6 +15,7 @@ import uuid
 import shutil
 from pathlib import Path
 from datetime import datetime
+import yaml
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 import random
@@ -44,6 +45,7 @@ STUDIO_IMAGES_DIR = STUDIO_DATA_DIR / "generated_images"
 STUDIO_IMAGES_DIR.mkdir(exist_ok=True)
 STUDIO_DATA_EXPORT_DIR = PROJECT_ROOT / "studio_data_export"
 STUDIO_DATA_EXPORT_DIR.mkdir(exist_ok=True)
+CONFIGS_DIR = PROJECT_ROOT / "src" / "configs"
 
 # --- 2. CORS NASTAVENÍ (ponecháno, je správně) ---
 app.add_middleware(
@@ -62,6 +64,7 @@ class ScrapeRequest(BaseModel):
 
 class StudioSaveRequest(BaseModel):
     data: Dict[str, List[dict]]
+    city: Optional[str] = "brno"
 
 
 class StudioGeneratedImageRequest(BaseModel):
@@ -77,24 +80,84 @@ class StudioExportImageItem(BaseModel):
 
 class StudioExportImagesRequest(BaseModel):
     items: List[StudioExportImageItem]
+    city: Optional[str] = "brno"
 
 @app.get("/")
 async def root():
     return {"message": "Party Scraper API is running."}
 
 
-def _latest_studio_file() -> Optional[Path]:
-    files = sorted(STUDIO_DATA_DIR.glob("final-events-*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-    if not files:
-        return None
-    return files[0]
+def _sanitize_city(city: Optional[str]) -> str:
+    raw = (city or "brno").strip().lower()
+    cleaned = "".join(ch for ch in raw if ch.isalnum() or ch in ("-", "_"))
+    return cleaned or "brno"
+
+
+def _city_config_path(city: str) -> Path:
+    return CONFIGS_DIR / f"{_sanitize_city(city)}.yaml"
+
+
+def _load_city_config(city: str) -> dict:
+    city_key = _sanitize_city(city)
+    path = _city_config_path(city_key)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"City config not found: {city_key}")
+
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            payload = yaml.safe_load(f) or {}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load city config: {str(e)}")
+
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=500, detail="City config must be a YAML object")
+
+    payload["CITY"] = _sanitize_city(str(payload.get("CITY") or city_key))
+    payload.setdefault("DISPLAY_NAME", payload["CITY"].title())
+    payload.setdefault("SCRAPERS", [])
+    return payload
+
+
+def _latest_studio_file(city: Optional[str] = None) -> Optional[Path]:
+    city_key = _sanitize_city(city)
+    files = sorted(STUDIO_DATA_DIR.glob(f"final-events-{city_key}-*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if files:
+        return files[0]
+
+    # Backward compatibility for historical files without city prefix.
+    if city_key == "brno":
+        fallback = sorted(STUDIO_DATA_DIR.glob("final-events-*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        return fallback[0] if fallback else None
+    return None
+
+
+@app.get("/config/cities")
+async def config_cities():
+    if not CONFIGS_DIR.exists():
+        return {"cities": []}
+
+    cities = []
+    for path in sorted(CONFIGS_DIR.glob("*.yaml")):
+        city_key = _sanitize_city(path.stem)
+        try:
+            cfg = _load_city_config(city_key)
+            cities.append({"city": cfg["CITY"], "displayName": cfg.get("DISPLAY_NAME") or cfg["CITY"].title()})
+        except Exception:
+            continue
+
+    return {"cities": cities}
+
+
+@app.get("/config/city/{city}")
+async def config_city(city: str):
+    return _load_city_config(city)
 
 
 @app.get("/studio/latest")
-async def studio_latest():
-    latest = _latest_studio_file()
+async def studio_latest(city: str = "brno"):
+    latest = _latest_studio_file(city)
     if not latest:
-        raise HTTPException(status_code=404, detail="No saved studio JSON found")
+        raise HTTPException(status_code=404, detail=f"No saved studio JSON found for city '{_sanitize_city(city)}'")
 
     try:
         with latest.open("r", encoding="utf-8") as f:
@@ -110,8 +173,9 @@ async def studio_latest():
 
 @app.post("/studio/save")
 async def studio_save(request: StudioSaveRequest):
+    city_key = _sanitize_city(request.city)
     timestamp = datetime.now().isoformat().replace(":", "-").replace(".", "-")
-    target = STUDIO_DATA_DIR / f"final-events-{timestamp}.json"
+    target = STUDIO_DATA_DIR / f"final-events-{city_key}-{timestamp}.json"
 
     try:
         with target.open("w", encoding="utf-8") as f:
@@ -208,6 +272,10 @@ async def studio_export_images(request: StudioExportImagesRequest):
     if not request.items:
         raise HTTPException(status_code=400, detail="No export items provided")
 
+    city_key = _sanitize_city(request.city)
+    city_dir = STUDIO_DATA_EXPORT_DIR / city_key
+    city_dir.mkdir(parents=True, exist_ok=True)
+
     saved_files: List[str] = []
 
     for item in request.items:
@@ -215,7 +283,7 @@ async def studio_export_images(request: StudioExportImagesRequest):
         safe_date_folder = "".join(ch for ch in date_folder if ch.isalnum() or ch in ("-", "_")) or "unknown-day"
         order_number = item.order if item.order > 0 else 1
 
-        day_dir = STUDIO_DATA_EXPORT_DIR / safe_date_folder
+        day_dir = city_dir / safe_date_folder
         day_dir.mkdir(parents=True, exist_ok=True)
 
         target_file = day_dir / f"{order_number}.jpg"
@@ -231,7 +299,8 @@ async def studio_export_images(request: StudioExportImagesRequest):
     return {
         "saved": True,
         "saved_count": len(saved_files),
-        "folder": str(STUDIO_DATA_EXPORT_DIR.relative_to(PROJECT_ROOT)).replace("\\", "/"),
+        "city": city_key,
+        "folder": str(city_dir.relative_to(PROJECT_ROOT)).replace("\\", "/"),
         "files": saved_files,
     }
 

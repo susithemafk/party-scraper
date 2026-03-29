@@ -14,68 +14,46 @@ import { raParser } from "./parsers/ra"
 import { bobyhallParser } from "./parsers/bobyhall"
 import { ScrapedItem } from "./types"
 
-const VENUES = [
-    {
-        title: "Bobyhall",
-        url: "https://bobyhall.cz/program-bobyhall/",
-        baseUrl: "https://bobyhall.cz/",
-        parser: bobyhallParser,
-    },
-    {
-        title: "Fraktal",
-        url: "https://ra.co/clubs/224489/events",
-        baseUrl: "https://ra.co/",
-        parser: raParser,
-    },
-    {
-        title: "pul.pit",
-        url: "https://ra.co/clubs/206733/events",
-        baseUrl: "https://ra.co/",
-        parser: raParser,
-    },
-    {
-        title: "Metro Music Bar",
-        url: "https://www.metromusic.cz/program/",
-        baseUrl: "https://www.metromusic.cz/",
-        parser: metroParser,
-    },
-    {
-        title: "První patro",
-        url: "https://patrobrno.cz/",
-        baseUrl: "https://patrobrno.cz/",
-        parser: patroParser,
-    },
-    {
-        title: "Perpetuum",
-        url: "https://www.perpetuumklub.cz/program/",
-        baseUrl: "https://www.perpetuumklub.cz/",
-        parser: perpetuumParser,
-    },
-    {
-        title: "Fléda",
-        url: "https://www.fleda.cz/program/",
-        baseUrl: "https://www.fleda.cz/",
-        parser: fledaParser,
-    },
-    {
-        title: "Sono Music Club",
-        url: "https://www.sono.cz/program/",
-        baseUrl: "https://www.sono.cz/",
-        parser: sonoParser,
-    },
-    {
-        title: "Kabinet Múz",
-        url: "https://www.kabinetmuz.cz/program",
-        baseUrl: "https://www.kabinetmuz.cz/",
-        parser: kabinetParser,
-    },
-    {
-        title: "Artbar",
-        url: "https://www.artbar.club/shows",
-        baseUrl: "https://www.artbar.club/",
-        parser: artbarParser,
-    },
-]
+type ParserKey = "artbar" | "kabinet" | "sono" | "fleda" | "perpetuum" | "patro" | "metro" | "ra" | "bobyhall"
+
+interface ScraperConfig {
+    title: string
+    url: string
+    baseUrl: string
+    parser: ParserKey
+}
+
+interface CityConfig {
+    CITY: string
+    DISPLAY_NAME?: string
+    CAPTION_TEMPLATE?: string
+    SCRAPERS: ScraperConfig[]
+}
+
+interface CityOption {
+    city: string
+    displayName: string
+}
+
+const PARSER_MAP = {
+    artbar: artbarParser,
+    kabinet: kabinetParser,
+    sono: sonoParser,
+    fleda: fledaParser,
+    perpetuum: perpetuumParser,
+    patro: patroParser,
+    metro: metroParser,
+    ra: raParser,
+    bobyhall: bobyhallParser,
+}
+
+const getLocalIsoDate = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, "0")
+    const day = String(now.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+}
 
 const App: React.FC = () => {
     const [triggerAll, setTriggerAll] = useState(0)
@@ -87,28 +65,41 @@ const App: React.FC = () => {
     const [studioData, setStudioData] = useState<Record<string, any[]>>({})
     const [copiedAll, setCopiedAll] = useState(false)
     const [globalOnlyToday, setGlobalOnlyToday] = useState(false)
-    const [weekAnchorDate, setWeekAnchorDate] = useState(new Date().toISOString().split("T")[0])
+    const [cities, setCities] = useState<CityOption[]>([])
+    const [selectedCity, setSelectedCity] = useState("brno")
+    const [cityConfig, setCityConfig] = useState<CityConfig | null>(null)
+    const [isCityLoading, setIsCityLoading] = useState(false)
+    const [rangeStart, setRangeStart] = useState("")
+    const [rangeEnd, setRangeEnd] = useState("")
     const [view, setView] = useState<"scraper" | "studio">("scraper")
 
+    const venues = useMemo(() => cityConfig?.SCRAPERS ?? [], [cityConfig])
+
     const getWeekBounds = useCallback((dateStr: string) => {
-        const base = new Date(`${dateStr}T00:00:00`)
-        const day = base.getDay()
+        const parts = dateStr.split("-").map((value) => Number.parseInt(value, 10))
+        if (parts.length !== 3 || parts.some((value) => Number.isNaN(value))) {
+            return { start: dateStr, end: dateStr, label: dateStr }
+        }
+
+        const [year, month, dayOfMonth] = parts
+        const base = new Date(Date.UTC(year, month - 1, dayOfMonth))
+        const day = base.getUTCDay()
         const diffToMonday = day === 0 ? -6 : 1 - day
 
         const monday = new Date(base)
-        monday.setDate(base.getDate() + diffToMonday)
+        monday.setUTCDate(base.getUTCDate() + diffToMonday)
 
         const sunday = new Date(monday)
-        sunday.setDate(monday.getDate() + 6)
+        sunday.setUTCDate(monday.getUTCDate() + 6)
 
         const toIso = (d: Date) => {
-            const year = d.getFullYear()
-            const month = String(d.getMonth() + 1).padStart(2, "0")
-            const date = String(d.getDate()).padStart(2, "0")
+            const year = d.getUTCFullYear()
+            const month = String(d.getUTCMonth() + 1).padStart(2, "0")
+            const date = String(d.getUTCDate()).padStart(2, "0")
             return `${year}-${month}-${date}`
         }
 
-        const toShort = (d: Date) => `${d.getDate()}.${d.getMonth() + 1}.`
+        const toShort = (d: Date) => `${d.getUTCDate()}.${d.getUTCMonth() + 1}.`
 
         return {
             start: toIso(monday),
@@ -121,6 +112,60 @@ const App: React.FC = () => {
         setAllResults({})
         setTriggerAll((prev) => prev + 1)
     }, [])
+
+    useEffect(() => {
+        const loadCities = async () => {
+            try {
+                const response = await fetch("http://localhost:8000/config/cities")
+                if (!response.ok) return
+                const payload = await response.json()
+                const nextCities = Array.isArray(payload?.cities) ? payload.cities : []
+                if (nextCities.length > 0) {
+                    setCities(nextCities)
+                    setSelectedCity(nextCities[0].city)
+                }
+            } catch {
+                // Keep default city and static fallback behavior when backend config endpoint is unavailable.
+            }
+        }
+
+        loadCities()
+    }, [])
+
+    useEffect(() => {
+        const loadCityConfig = async () => {
+            setIsCityLoading(true)
+            try {
+                const response = await fetch(`http://localhost:8000/config/city/${encodeURIComponent(selectedCity)}`)
+                if (!response.ok) {
+                    throw new Error("Failed to load city config")
+                }
+
+                const payload = (await response.json()) as CityConfig
+                const safeScrapers = Array.isArray(payload?.SCRAPERS)
+                    ? payload.SCRAPERS.filter((scraper) => !!scraper && !!PARSER_MAP[scraper.parser])
+                    : []
+
+                setCityConfig({
+                    ...payload,
+                    CITY: payload?.CITY || selectedCity,
+                    SCRAPERS: safeScrapers,
+                })
+            } catch {
+                // Fallback to empty config when backend config cannot be loaded.
+                setCityConfig({ CITY: selectedCity, DISPLAY_NAME: selectedCity, SCRAPERS: [] })
+            } finally {
+                setIsCityLoading(false)
+            }
+        }
+
+        setAllResults({})
+        setAiResults({})
+        setStudioData({})
+        setLoadingStates({})
+        setTriggerAll(0)
+        loadCityConfig()
+    }, [selectedCity])
 
     const handleLoading = useCallback((title: string, isLoading: boolean) => {
         setLoadingStates((prev) => {
@@ -163,11 +208,25 @@ const App: React.FC = () => {
         })
     }, [allResults])
 
-    const selectedWeek = useMemo(() => getWeekBounds(weekAnchorDate), [weekAnchorDate, getWeekBounds])
+    const selectedWeek = useMemo(() => {
+        const anchor = getLocalIsoDate()
+        return getWeekBounds(anchor)
+    }, [getWeekBounds])
+
+    useEffect(() => {
+        if (!rangeStart) setRangeStart(selectedWeek.start)
+        if (!rangeEnd) setRangeEnd(selectedWeek.end)
+    }, [rangeStart, rangeEnd, selectedWeek])
+
+    const effectiveRangeStart = rangeStart || selectedWeek.start
+    const effectiveRangeEnd = rangeEnd || selectedWeek.end
 
     const weekFilteredAggregatedResults = useMemo(
-        () => aggregatedResults.filter((item) => !!item.date && item.date >= selectedWeek.start && item.date <= selectedWeek.end),
-        [aggregatedResults, selectedWeek],
+        () =>
+            aggregatedResults.filter(
+                (item) => !!item.date && item.date >= effectiveRangeStart && item.date <= effectiveRangeEnd,
+            ),
+        [aggregatedResults, effectiveRangeStart, effectiveRangeEnd],
     )
 
     const handleCopyAll = useCallback(() => {
@@ -200,6 +259,21 @@ const App: React.FC = () => {
     }, [baseResults, studioData])
 
     const finalResults = Object.keys(studioData).length > 0 ? studioData : baseResults
+
+    const studioTitleText = useMemo(() => {
+        const captionTemplate = (cityConfig?.CAPTION_TEMPLATE || "").split("\n")[0]?.trim()
+        if (captionTemplate) {
+            const cleaned = captionTemplate
+                .replace(/\{date_short\}|\{date_iso\}|\{date\}/g, "")
+                .replace(/\s+/g, " ")
+                .trim()
+            if (cleaned) {
+                return cleaned.toLocaleUpperCase("cs-CZ")
+            }
+        }
+
+        return `AKCE V ${(cityConfig?.DISPLAY_NAME || selectedCity).toLocaleUpperCase("cs-CZ")}`
+    }, [cityConfig, selectedCity])
 
     const activeScrapersCount = Object.values(loadingStates).filter(Boolean).length
     const isAnyLoading = activeScrapersCount > 0
@@ -260,11 +334,42 @@ const App: React.FC = () => {
                         }}
                     >
                         <div style={{ position: "relative" }}>
-                            <button onClick={handleFetchAll} className="fetch-all-btn" disabled={isAnyLoading}>
-                                {isAnyLoading ? `FETCHING... (${activeScrapersCount}/${VENUES.length})` : `FETCH ALL SCRAPERS (${VENUES.length})`}
+                            <button onClick={handleFetchAll} className="fetch-all-btn" disabled={isAnyLoading || isCityLoading || venues.length === 0}>
+                                {isAnyLoading ? `FETCHING... (${activeScrapersCount}/${venues.length})` : `FETCH ALL SCRAPERS (${venues.length})`}
                             </button>
                             {isAnyLoading && <div className="fetching-loader-bar"></div>}
                         </div>
+
+                        <label
+                            className="global-filter"
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.5rem",
+                                fontSize: "0.9rem",
+                                color: "var(--text-muted)",
+                            }}
+                        >
+                            CITY
+                            <select
+                                value={selectedCity}
+                                onChange={(e) => setSelectedCity(e.target.value)}
+                                style={{
+                                    background: "#0f172a",
+                                    color: "#e2e8f0",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "0.4rem",
+                                    padding: "0.4rem 0.6rem",
+                                }}
+                            >
+                                {cities.map((city) => (
+                                    <option key={city.city} value={city.city}>
+                                        {city.displayName}
+                                    </option>
+                                ))}
+                                {cities.length === 0 && <option value={selectedCity}>{selectedCity}</option>}
+                            </select>
+                        </label>
 
                         <div style={{ display: "flex", gap: "0.5rem" }}>
                             <button
@@ -316,11 +421,11 @@ const App: React.FC = () => {
                                 color: "var(--text-muted)",
                             }}
                         >
-                            WEEK DATE
+                            FROM
                             <input
                                 type="date"
-                                value={weekAnchorDate}
-                                onChange={(e) => setWeekAnchorDate(e.target.value)}
+                                value={effectiveRangeStart}
+                                onChange={(e) => setRangeStart(e.target.value)}
                                 style={{
                                     background: "#0f172a",
                                     color: "#e2e8f0",
@@ -329,7 +434,19 @@ const App: React.FC = () => {
                                     padding: "0.4rem 0.6rem",
                                 }}
                             />
-                            <span style={{ fontWeight: 700 }}>{selectedWeek.label}</span>
+                            TO
+                            <input
+                                type="date"
+                                value={effectiveRangeEnd}
+                                onChange={(e) => setRangeEnd(e.target.value)}
+                                style={{
+                                    background: "#0f172a",
+                                    color: "#e2e8f0",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "0.4rem",
+                                    padding: "0.4rem 0.6rem",
+                                }}
+                            />
                         </label>
 
                         {weekFilteredAggregatedResults.length > 0 && (
@@ -350,19 +467,19 @@ const App: React.FC = () => {
                     <div className="main-content">
                         <AiProcessor inputData={weekFilteredAggregatedResults} onComplete={handleAiComplete} switchToStudio={() => setView("studio")} />
 
-                        {VENUES.map((venue) => (
+                        {venues.map((venue) => (
                             <ScraperSection
                                 key={venue.title}
                                 title={venue.title}
                                 defaultUrl={venue.url}
                                 baseUrl={venue.baseUrl}
-                                parserFunc={venue.parser}
+                                parserFunc={PARSER_MAP[venue.parser]}
                                 onResult={handleResult}
                                 onLoading={(isLoading) => handleLoading(venue.title, isLoading)}
                                 onlyToday={globalOnlyToday}
                                 setOnlyToday={setGlobalOnlyToday}
-                                weekStart={selectedWeek.start}
-                                weekEnd={selectedWeek.end}
+                                weekStart={effectiveRangeStart}
+                                weekEnd={effectiveRangeEnd}
                                 trigger={triggerAll}
                                 expandTrigger={expandAllCounter}
                                 collapseTrigger={collapseAllCounter}
@@ -372,7 +489,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="studio-wrapper" style={{ display: view === "studio" ? "block" : "none" }}>
-                    <StudioEditor data={finalResults} onChange={setStudioData} />
+                    <StudioEditor data={finalResults} onChange={setStudioData} selectedCity={selectedCity} cityTitleText={studioTitleText} />
                 </div>
             </div>
         </div>

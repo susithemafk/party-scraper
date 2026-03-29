@@ -5,6 +5,8 @@ import styles from "./InstagramGenerator.module.css"
 interface StudioEditorProps {
     data: Record<string, any[]>
     onChange: (next: Record<string, any[]>) => void
+    selectedCity: string
+    cityTitleText: string
 }
 
 interface StudioRow {
@@ -142,7 +144,7 @@ const formatTitleDate = (dateStr: string) => {
     return dateStr
 }
 
-export const StudioEditor: React.FC<StudioEditorProps> = ({ data, onChange }) => {
+export const StudioEditor: React.FC<StudioEditorProps> = ({ data, onChange, selectedCity, cityTitleText }) => {
     const [isLoadingLatest, setIsLoadingLatest] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
@@ -218,7 +220,7 @@ export const StudioEditor: React.FC<StudioEditorProps> = ({ data, onChange }) =>
         setSaveStatus("Loading latest local JSON...")
 
         try {
-            const response = await fetch("http://localhost:8000/studio/latest")
+            const response = await fetch(`http://localhost:8000/studio/latest?city=${encodeURIComponent(selectedCity)}`)
             if (!response.ok) {
                 const err = await response.json().catch(() => ({}))
                 throw new Error(err?.detail || "Failed to load latest JSON")
@@ -227,7 +229,7 @@ export const StudioEditor: React.FC<StudioEditorProps> = ({ data, onChange }) =>
             const payload = await response.json()
             if (payload?.data && typeof payload.data === "object") {
                 onChange(payload.data)
-                setSaveStatus(`Loaded: ${payload.filename || "latest file"}`)
+                setSaveStatus(`Loaded (${selectedCity}): ${payload.filename || "latest file"}`)
             } else {
                 setSaveStatus("Latest file loaded, but content is empty.")
             }
@@ -247,7 +249,7 @@ export const StudioEditor: React.FC<StudioEditorProps> = ({ data, onChange }) =>
             const response = await fetch("http://localhost:8000/studio/save", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ data: dataRef.current }),
+                body: JSON.stringify({ data: dataRef.current, city: selectedCity }),
             })
 
             if (!response.ok) {
@@ -256,7 +258,7 @@ export const StudioEditor: React.FC<StudioEditorProps> = ({ data, onChange }) =>
             }
 
             const result = await response.json()
-            setSaveStatus(`Saved locally: ${result.filename}`)
+            setSaveStatus(`Saved locally (${selectedCity}): ${result.filename}`)
         } catch (error: any) {
             setSaveStatus(`Save failed: ${error.message}`)
         } finally {
@@ -688,7 +690,7 @@ export const StudioEditor: React.FC<StudioEditorProps> = ({ data, onChange }) =>
             const response = await fetch("http://localhost:8000/studio/export-images", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ items }),
+                body: JSON.stringify({ items, city: selectedCity }),
             })
 
             if (!response.ok) {
@@ -1077,11 +1079,8 @@ export const StudioEditor: React.FC<StudioEditorProps> = ({ data, onChange }) =>
                                                         textAlign: "center",
                                                     }}
                                                 >
-                                                    <h1
-                                                        className={styles.actionTitle}
-                                                        style={{ fontSize: "130px", marginBottom: "42px", WebkitLineClamp: "unset" }}
-                                                    >
-                                                        AKCE V BRNĚ
+                                                    <h1 className={styles.actionTitle} style={{ fontSize: "130px", marginBottom: "42px", WebkitLineClamp: "unset" }}>
+                                                        {cityTitleText}
                                                     </h1>
                                                     <div style={{ width: "290px", height: "16px", background: "#306be1", marginBottom: "48px" }} />
                                                     <h2
@@ -1160,11 +1159,8 @@ export const StudioEditor: React.FC<StudioEditorProps> = ({ data, onChange }) =>
                                                             textAlign: "center",
                                                         }}
                                                     >
-                                                        <h1
-                                                            className={styles.actionTitle}
-                                                            style={{ fontSize: "130px", marginBottom: "42px", WebkitLineClamp: "unset" }}
-                                                        >
-                                                            AKCE V BRNĚ
+                                                        <h1 className={styles.actionTitle} style={{ fontSize: "130px", marginBottom: "42px", WebkitLineClamp: "unset" }}>
+                                                            {cityTitleText}
                                                         </h1>
                                                         <div style={{ width: "290px", height: "16px", background: "#306be1", marginBottom: "48px" }} />
                                                         <h2

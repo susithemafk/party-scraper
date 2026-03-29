@@ -10,3 +10,4 @@ playwright
 playwright-stealth
 aiofiles
 httpx
+PyYAML
